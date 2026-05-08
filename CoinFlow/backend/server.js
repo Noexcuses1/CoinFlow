@@ -4,7 +4,7 @@ import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import { initializeDatabase } from './db/postgres.js';
-import { initQuickNode, subscribeWhaleTransactions } from './services/quicknodeService.js';
+import { initQuickNode, subscribeWhaleTransactions } from './services/quicknode.js';
 import { handleConnection, processWhaleTransaction } from './websocket/feedHandler.js';
 import apiRoutes from './routes/api.js';
 
