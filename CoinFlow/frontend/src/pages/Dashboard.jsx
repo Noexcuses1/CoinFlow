@@ -1,75 +1,122 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import SignalCard from '../components/SignalCard/SignalCard';
 import styles from './Dashboard.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
+const REFRESH_INTERVAL = 25000; // 25s
 
 export default function Dashboard() {
-  const [signals, setSignals] = useState([]);
-  const [stats, setStats] = useState({ today: 0, whales: 0 });
+  const [trending, setTrending] = useState([]);
+  const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(`${API_URL}/api/alerts`)
-      .then(res => res.json())
-      .then(data => {
-        const alerts = Array.isArray(data) ? data : [];
-        setSignals(alerts.slice(0, 20));
-        setStats({
-          today: alerts.length,
-          whales: new Set(alerts.map(s => s.wallet)).size,
-        });
-      })
-      .catch(() => {
-        // If backend is completely down, show local fallback (optional)
-      })
-      .finally(() => setLoading(false));
+  const fetchTrending = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/trending?limit=20`);
+      const data = await res.json();
+      const tokens = data?.data?.coins || data || [];
+      setTrending(tokens.slice(0, 20));
+    } catch (err) {
+      console.error('Failed to load trending tokens', err);
+    }
+  }, []);
 
+  // Initial fetch + interval
+  useEffect(() => {
+    fetchTrending();
+    const interval = setInterval(fetchTrending, REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [fetchTrending]);
+
+  // WebSocket for real-time whale alerts
+  useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${API_URL.replace(/^http/, 'ws')}/ws`;
     const ws = new WebSocket(wsUrl);
     ws.onmessage = (event) => {
       try {
-        const alert = JSON.parse(event.data);
-        setSignals(prev => [alert, ...prev.slice(0, 19)]);
-        setStats(prev => ({
-          today: prev.today + 1,
-          whales: new Set([alert, ...signals].map(s => s.wallet)).size,
-        }));
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'init') {
+          setAlerts(msg.alerts || []);
+          setLoading(false);
+        } else if (msg.type === 'alert') {
+          setAlerts(prev => [msg.alert, ...prev.slice(0, 49)]);
+        }
       } catch (e) {}
     };
-    ws.onerror = () => console.log('WebSocket not available');
+    ws.onerror = () => setLoading(false);
+    // Also fetch latest alerts via HTTP as fallback
+    fetch(`${API_URL}/api/alerts`)
+      .then(res => res.json())
+      .then(data => {
+        setAlerts(data.slice(0, 20));
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
     return () => ws.close();
   }, []);
+
+  const stats = {
+    today: alerts.length,
+    whales: new Set(alerts.map(a => a.wallet)).size,
+  };
 
   return (
     <div className={styles.dashboard}>
       <div className={styles.headerRow}>
         <h1 className={styles.title}>Smart Money Stream</h1>
         <div className={styles.stats}>
-          <span className={styles.stat}><strong>{stats.today}</strong> signals today</span>
-          <span className={styles.stat}><strong>{stats.whales}</strong> whales active</span>
+          <span className={styles.stat}><strong>{stats.today}</strong> alerts</span>
+          <span className={styles.stat}><strong>{stats.whales}</strong> whales</span>
         </div>
       </div>
-      {loading ? (
-        <p>Loading signals...</p>
-      ) : signals.length === 0 ? (
-        <p>No signals yet. Waiting for whale activity...</p>
-      ) : (
+
+      {loading && <div className={styles.loader}>Loading live data...</div>}
+
+      {/* Trending tokens section */}
+      <section>
+        <h2 className={styles.sectionTitle}>🔥 Trending Tokens</h2>
+        <div className={styles.trendingGrid}>
+          {trending.map((coin, i) => (
+            <TrendingCard key={i} coin={coin} />
+          ))}
+        </div>
+      </section>
+
+      {/* Whale alert feed */}
+      <section>
+        <h2 className={styles.sectionTitle}>🐋 Whale Moves</h2>
         <div className={styles.grid}>
-          {signals.map((s, i) => (
-            <SignalCard key={s.id || s.tx_hash || i} signal={{
-              token: s.token,
-              type: s.type,
-              wallet: s.wallet,
-              value: `$${parseFloat(s.value_usd).toLocaleString()}`,
-              timestamp: new Date(s.created_at).toLocaleTimeString(),
-              profit: parseFloat(s.profit_percent),
+          {alerts.length === 0 && !loading && <p>Waiting for whale activity...</p>}
+          {alerts.map((alert, i) => (
+            <SignalCard key={alert.tx_hash || i} signal={{
+              token: alert.token,
+              type: alert.type,
+              wallet: alert.wallet,
+              value: `$${parseFloat(alert.value_usd).toLocaleString()}`,
+              timestamp: new Date(alert.created_at).toLocaleTimeString(),
+              profit: parseFloat(alert.profit_percent),
             }} />
           ))}
         </div>
-      )}
+      </section>
+    </div>
+  );
+}
+
+// Simple trending card component
+function TrendingCard({ coin }) {
+  const price = coin?.price || coin?.priceUsd || 0;
+  const change = coin?.priceChange24hPercent || 0;
+  const volume = coin?.volume24h || coin?.volume || 0;
+  return (
+    <div className={`glass-panel ${styles.trendingCard}`}>
+      <div className={styles.trendingHeader}>
+        <span>{coin?.symbol || '???'}</span>
+        <span className={change >= 0 ? styles.positive : styles.negative}>{change.toFixed(2)}%</span>
+      </div>
+      <div>${price.toFixed(4)}</div>
+      <div className={styles.volume}>Vol: ${Math.round(volume).toLocaleString()}</div>
     </div>
   );
 }
