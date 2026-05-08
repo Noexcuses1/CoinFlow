@@ -44,3 +44,71 @@
   .searchBox button:hover {
     opacity: 0.9;
   }
+  .chart {
+    padding: 16px;
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .chartHeader {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+  
+  .chartMuted {
+    color: var(--text-muted);
+  }
+  
+  .chartBody {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    height: 200px;
+    justify-content: center;
+  }
+  
+  .chartPlaceholder {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 80px;
+  }
+  
+  .chartLine {
+    width: 8px;
+    height: 60%;
+    background: var(--accent-green);
+    border-radius: 4px;
+    opacity: 0.6;
+  }
+  
+  .chartLineShort {
+    width: 8px;
+    height: 30%;
+    background: var(--accent-green);
+    border-radius: 4px;
+    opacity: 0.4;
+  }
+  
+  .chartLabel {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  @media (max-width: 768px) {
+    .searchBox {
+      flex-direction: column;
+    }
+  
+    .searchBox input {
+      max-width: 100%;
+    }
+  
+    .searchBox button {
+      width: 100%;
+    }
+  }

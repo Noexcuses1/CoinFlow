@@ -1,54 +1,55 @@
 .layout {
-    display: flex;
-    height: 100vh;
-    overflow: hidden;
-  }
-  
-  .sidebarWrapper {
-    width: 240px;
-    height: 100vh;
-    position: relative;
-    transition: transform 0.3s ease;
-  }
-  
-  .main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-  }
-  
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  /* padding-bottom for bottom nav on mobile */
+  padding-bottom: 80px;          /* extra space so content isn't hidden behind bottom nav */
+}
+
+@media (min-width: 769px) {
   .content {
-    flex: 1;
     padding: 24px;
-    overflow-y: auto;
+    padding-bottom: 24px;        /* reset on desktop */
   }
-  
-  .overlay {
-    display: none;
+}
+
+.sidebarWrapper {
+  width: 260px;
+  height: 100vh;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border-subtle);
+  /* Desktop: always visible, in flow on the right */
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .sidebarWrapper {
+    display: none;                /* hidden on mobile, bottom nav takes over */
   }
-  
-  /* Mobile styles */
-  @media (max-width: 768px) {
-    .sidebarWrapper {
-      position: fixed;
-      top: 0;
-      left: 0;
-      z-index: 100;
-      transform: translateX(-100%);
-      box-shadow: none;
-    }
-  
-    .sidebarWrapper.open {
-      transform: translateX(0);
-      box-shadow: 4px 0 20px rgba(0,0,0,0.5);
-    }
-  
-    .overlay {
-      display: block;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 99;
-    }
+}
+.content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  padding-bottom: 120px;  /* space for search + bottom nav */
+}
+
+@media (min-width: 769px) {
+  .content {
+    padding: 24px;
+    padding-bottom: 24px;  /* reset on desktop (no bottom elements) */
   }
+}

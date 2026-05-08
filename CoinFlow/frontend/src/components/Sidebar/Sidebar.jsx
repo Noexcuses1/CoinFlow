@@ -8,10 +8,9 @@ const navItems = [
   { to: '/alerts', icon: '🔔', label: 'Alerts' },
 ];
 
-export default function Sidebar({ onClose }) {
+export default function Sidebar() {
   return (
     <aside className={styles.sidebar}>
-      <button className={styles.closeBtn} onClick={onClose}>✕</button>
       <div className={styles.nav}>
         {navItems.map((item) => (
           <NavLink
@@ -20,7 +19,6 @@ export default function Sidebar({ onClose }) {
             className={({ isActive }) =>
               `${styles.link} ${isActive ? styles.active : ''}`
             }
-            onClick={onClose} // close sidebar on mobile when link clicked
           >
             <span className={styles.icon}>{item.icon}</span>
             <span className={styles.label}>{item.label}</span>
