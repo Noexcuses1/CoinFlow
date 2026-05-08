@@ -1,0 +1,46 @@
+.trade {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  .trade h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  
+  .searchBox {
+    display: flex;
+    gap: 12px;
+  }
+  
+  .searchBox input {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    max-width: 480px;
+  }
+  
+  .searchBox input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+  }
+  
+  .searchBox button {
+    background: var(--accent-green);
+    color: #000;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 10px 24px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  
+  .searchBox button:hover {
+    opacity: 0.9;
+  }

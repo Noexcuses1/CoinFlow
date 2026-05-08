@@ -1,0 +1,87 @@
+.card {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 24px rgba(0, 255, 163, 0.12);
+  }
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .token {
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+  
+  .badge {
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+  
+  .buy {
+    background: rgba(0, 255, 163, 0.15);
+    color: var(--accent-green);
+  }
+  
+  .sell {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+  }
+  
+  .details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .row {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .label {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+  
+  .value {
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+  
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+  }
+  
+  .time {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+  
+  .profit {
+    font-weight: 600;
+    font-size: 0.8rem;
+  }
+  
+  .positive {
+    color: var(--accent-green);
+  }
+  
+  .negative {
+    color: var(--danger);
+  }

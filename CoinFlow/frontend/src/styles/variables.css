@@ -1,0 +1,17 @@
+:root {
+    --bg-primary: #070B11;
+    --bg-card: #111827;
+    --accent-green: #00FFA3;
+    --accent-blue: #3B82F6;
+    --accent-purple: #8B5CF6;
+    --danger: #EF4444;
+    --text-primary: #F3F4F6;
+    --text-muted: #9CA3AF;
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --glass-bg: rgba(17, 24, 39, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --shadow-glow: 0 0 20px rgba(0, 255, 163, 0.15);
+  }
