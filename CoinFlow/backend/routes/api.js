@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { getTrendingTokens, getTokenOverview, getWalletPortfolio, getTokenSecurity } from '../services/birdeyeService.js';
-import { getWalletBalances } from '../services/quicknodeService.js';
+import { getTrendingTokens, getTokenOverview, getWalletPortfolio, getTokenSecurity } from '../services/birdeye.js';
+import { getWalletBalances } from '../services/quicknode.js';
 import { getSwapQuote, buildSwapTransaction, getTokens } from '../services/jupiterService.js';
 import { getSwapQuote as getDexlabQuote } from '../services/dexlabService.js';
 import cache from '../services/cache.js';
