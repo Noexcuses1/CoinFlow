@@ -31,28 +31,37 @@ export default function Dashboard() {
   // WebSocket for real-time whale alerts
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${API_URL.replace(/^http/, 'ws')}/ws`;
+    const base = API_URL ? API_URL.replace(/^https?:/, protocol) : window.location.origin;
+    const wsUrl = `${base}/ws`;
+  
     const ws = new WebSocket(wsUrl);
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === 'init') {
           setAlerts(msg.alerts || []);
-          setLoading(false);
+          setLoading(false);    // mark loading done when init arrives
         } else if (msg.type === 'alert') {
-          setAlerts(prev => [msg.alert, ...prev.slice(0, 49)]);
+          setAlerts((prev) => [msg.alert, ...prev.slice(0, 49)]);
         }
       } catch (e) {}
     };
-    ws.onerror = () => setLoading(false);
-    // Also fetch latest alerts via HTTP as fallback
-    fetch(`${API_URL}/api/alerts`)
-      .then(res => res.json())
-      .then(data => {
-        setAlerts(data.slice(0, 20));
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+  
+    ws.onerror = () => {
+      // fallback: fetch alerts via HTTP
+      fetch(`${API_URL}/api/alerts`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setAlerts(data.slice(0, 20));
+          }
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    };
+  
+    ws.onclose = () => setLoading(false);
+  
     return () => ws.close();
   }, []);
 

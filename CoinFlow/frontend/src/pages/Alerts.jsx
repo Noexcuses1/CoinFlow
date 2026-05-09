@@ -8,16 +8,21 @@ export default function Alerts() {
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${API_URL.replace(/^http/, 'ws')}/ws`;
+    const base = API_URL ? API_URL.replace(/^https?:/, protocol) : window.location.origin;
+    const wsUrl = `${base}/ws`;
+  
     const ws = new WebSocket(wsUrl);
     ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === 'init') {
-        setAlerts(msg.alerts || []);
-      } else if (msg.type === 'alert') {
-        setAlerts(prev => [msg.alert, ...prev.slice(0, 99)]);
-      }
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'init') {
+          setAlerts(msg.alerts || []);
+        } else if (msg.type === 'alert') {
+          setAlerts((prev) => [msg.alert, ...prev.slice(0, 99)]);
+        }
+      } catch (e) {}
     };
+  
     return () => ws.close();
   }, []);
 
