@@ -13,11 +13,31 @@ export default function Dashboard() {
   const fetchTrending = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/trending?limit=20`);
-      const data = await res.json();
-      const tokens = data?.data?.coins || data || [];
+      const json = await res.json();
+  
+      // Extract an array from all possible Birdeye response shapes
+      let tokens = [];
+      if (Array.isArray(json)) {
+        tokens = json;
+      } else if (json?.data?.coins) {
+        tokens = json.data.coins;
+      } else if (json?.data?.data?.coins) {   // some APIs wrap twice
+        tokens = json.data.data.coins;
+      } else if (Array.isArray(json?.data)) {
+        tokens = json.data;
+      } else if (json?.data && Array.isArray(json.data.coins)) {
+        tokens = json.data.coins;
+      }
+  
+      if (!Array.isArray(tokens)) {
+        console.warn('Trending tokens: unexpected format', json);
+        tokens = [];
+      }
+  
       setTrending(tokens.slice(0, 20));
     } catch (err) {
       console.error('Failed to load trending tokens', err);
+      setTrending([]);   // ensure it stays an empty array
     }
   }, []);
 
