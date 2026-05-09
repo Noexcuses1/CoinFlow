@@ -1,44 +1,22 @@
-import 'dotenv/config';
 import express from 'express';
-import { createServer } from 'http';
-import { WebSocketServer } from 'ws';
 import cors from 'cors';
-import { initializeDatabase } from './db/postgres.js';
-// import { initQuickNode, subscribeWhaleTransactions } from './services/quicknodeService.js';
-import { handleConnection /*, processWhaleTransaction */ } from './websocket/feedHandler.js';
-import apiRoutes from './routes/api.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
-app.use(express.json());
-app.use('/api', apiRoutes);
+app.use(cors());
 
-const server = createServer(app);
-
-// WebSocket for frontend feed
-const wss = new WebSocketServer({ server, path: '/ws' });
-wss.on('connection', handleConnection);
-
-// ---- Error catchers ----
-process.on('uncaughtException', (err) => {
-  console.error('💥 Uncaught exception:', err);
-});
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('💥 Unhandled rejection at:', promise, 'reason:', reason);
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', port: PORT });
 });
 
-async function start() {
-  await initializeDatabase();
+// Catch‑all for root
+app.get('/', (req, res) => res.send('CoinFlow backend alive'));
 
-  // QuickNode temporarily disabled
-  // initQuickNode();
-  // subscribeWhaleTransactions(processWhaleTransaction);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Minimal server running on http://0.0.0.0:${PORT}`);
+});
 
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 CoinFlow backend running on http://0.0.0.0:${PORT}`);
-  });
-}
-
-start();
+// Error catchers
+process.on('uncaughtException', (err) => console.error('💥 Uncaught exception:', err));
+process.on('unhandledRejection', (reason) => console.error('💥 Unhandled rejection:', reason));
