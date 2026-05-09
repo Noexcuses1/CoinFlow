@@ -4,8 +4,8 @@ import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import { initializeDatabase } from './db/postgres.js';
-import { initQuickNode, subscribeWhaleTransactions } from './services/quicknode.js';
-import { handleConnection, processWhaleTransaction } from './websocket/feedHandler.js';
+// import { initQuickNode, subscribeWhaleTransactions } from './services/quicknodeService.js';
+import { handleConnection /*, processWhaleTransaction */ } from './websocket/feedHandler.js';
 import apiRoutes from './routes/api.js';
 
 const app = express();
@@ -21,14 +21,23 @@ const server = createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 wss.on('connection', handleConnection);
 
+// ---- Error catchers ----
+process.on('uncaughtException', (err) => {
+  console.error('💥 Uncaught exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled rejection at:', promise, 'reason:', reason);
+});
+
 async function start() {
   await initializeDatabase();
-  initQuickNode();
-  // Start listening to whale transactions (will call processWhaleTransaction)
-  subscribeWhaleTransactions(processWhaleTransaction);
+
+  // QuickNode temporarily disabled
+  // initQuickNode();
+  // subscribeWhaleTransactions(processWhaleTransaction);
 
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 CoinFlow backend running on http://localhost:${PORT}`);
+    console.log(`🚀 CoinFlow backend running on http://0.0.0.0:${PORT}`);
   });
 }
 
