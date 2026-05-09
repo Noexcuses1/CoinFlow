@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { useWallet } from '../../context/WalletContext';
+import { useWallet } from '../context/WalletContext';
 import styles from './Wallet.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || '';

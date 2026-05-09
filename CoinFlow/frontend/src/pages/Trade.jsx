@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useWallet } from '../../context/WalletContext';
+import { useWallet } from '../context/WalletContext';
 import styles from './Trade.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
