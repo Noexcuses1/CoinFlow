@@ -27,7 +27,7 @@ async function start() {
   // Start listening to whale transactions (will call processWhaleTransaction)
   subscribeWhaleTransactions(processWhaleTransaction);
 
-  server.listen(PORT, () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 CoinFlow backend running on http://localhost:${PORT}`);
   });
 }
