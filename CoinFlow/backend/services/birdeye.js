@@ -5,7 +5,7 @@ const BIRDEYE_BASE = 'https://public-api.birdeye.so';
 const API_KEY = process.env.BIRDEYE_API_KEY;
 
 if (!API_KEY) {
-  console.warn('⚠️ BIRDEYE_API_KEY not set – token data will be limited.');
+  console.warn('⚠️ BIRDEYE_API_KEY not set – trending data will be empty.');
 }
 
 const birdeye = axios.create({
@@ -13,34 +13,31 @@ const birdeye = axios.create({
   headers: { 'X-API-KEY': API_KEY || '', 'Content-Type': 'application/json' },
 });
 
-// Get trending tokens (default: sort by volume, 20 results)
+// CORRECT trending endpoint
 export async function getTrendingTokens(limit = 20) {
   const cacheKey = `trending_${limit}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
 
   try {
-    const { data } = await birdeye.get('/public/getTrendingTokens', {
-      params: { sort_type: 'volume', limit },
+    const { data } = await birdeye.get('/public/trending/tokens', {
+      params: { limit, offset: 0, sort: 'rank' },
     });
-    cache.set(cacheKey, data, 25); // 25 sec TTL
+    cache.set(cacheKey, data, 30); // 30 sec TTL
     return data;
   } catch (err) {
-    console.error('Birdeye trending error:', err.message);
-    return { success: false, data: [] };
+    console.error('Birdeye trending error:', err.response?.status, err.message);
+    return { success: false, data: [] }; // safe fallback
   }
 }
 
-// Token price / overview
 export async function getTokenOverview(address) {
   const cacheKey = `token_${address}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
 
   try {
-    const { data } = await birdeye.get('/public/token_overview', {
-      params: { address },
-    });
+    const { data } = await birdeye.get('/public/token_overview', { params: { address } });
     cache.set(cacheKey, data, 20);
     return data;
   } catch (err) {
@@ -49,7 +46,6 @@ export async function getTokenOverview(address) {
   }
 }
 
-// Wallet token holdings (using Birdeye's wallet endpoint – limited)
 export async function getWalletPortfolio(walletAddress) {
   const cacheKey = `wallet_${walletAddress}`;
   const cached = cache.get(cacheKey);
@@ -67,17 +63,14 @@ export async function getWalletPortfolio(walletAddress) {
   }
 }
 
-// Token security info
 export async function getTokenSecurity(address) {
   const cacheKey = `security_${address}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
 
   try {
-    const { data } = await birdeye.get('/public/token_security', {
-      params: { address },
-    });
-    cache.set(cacheKey, data, 60); // security data rarely changes
+    const { data } = await birdeye.get('/public/token_security', { params: { address } });
+    cache.set(cacheKey, data, 60);
     return data;
   } catch (err) {
     console.error('Birdeye security error:', err.message);
