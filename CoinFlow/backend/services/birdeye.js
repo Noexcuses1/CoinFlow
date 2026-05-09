@@ -13,7 +13,7 @@ const birdeye = axios.create({
   headers: { 'X-API-KEY': API_KEY || '', 'Content-Type': 'application/json' },
 });
 
-// CORRECT trending endpoint
+// CORRECT trending endpoint (no key → returns 401, but backend catches)
 export async function getTrendingTokens(limit = 20) {
   const cacheKey = `trending_${limit}`;
   const cached = cache.get(cacheKey);
@@ -23,11 +23,12 @@ export async function getTrendingTokens(limit = 20) {
     const { data } = await birdeye.get('/public/trending/tokens', {
       params: { limit, offset: 0, sort: 'rank' },
     });
-    cache.set(cacheKey, data, 30); // 30 sec TTL
+    cache.set(cacheKey, data, 30);
     return data;
   } catch (err) {
     console.error('Birdeye trending error:', err.response?.status, err.message);
-    return { success: false, data: [] }; // safe fallback
+    // Return safe fallback so frontend never crashes
+    return { success: false, data: { coins: [] } };
   }
 }
 
@@ -35,7 +36,6 @@ export async function getTokenOverview(address) {
   const cacheKey = `token_${address}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
-
   try {
     const { data } = await birdeye.get('/public/token_overview', { params: { address } });
     cache.set(cacheKey, data, 20);
@@ -50,7 +50,6 @@ export async function getWalletPortfolio(walletAddress) {
   const cacheKey = `wallet_${walletAddress}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
-
   try {
     const { data } = await birdeye.get('/public/wallet/token_list', {
       params: { wallet: walletAddress },
@@ -67,7 +66,6 @@ export async function getTokenSecurity(address) {
   const cacheKey = `security_${address}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
-
   try {
     const { data } = await birdeye.get('/public/token_security', { params: { address } });
     cache.set(cacheKey, data, 60);
