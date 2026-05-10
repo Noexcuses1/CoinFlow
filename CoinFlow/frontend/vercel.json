@@ -1,6 +1,3 @@
 {
-  "routes": [
-    { "src": "/slides.html", "dest": "/slides.html" },
-    { "src": "/(.*)", "dest": "/index.html" }
-  ]
+  "rewrites": [{ "source": "/((?!assets|src|node_modules|.*\\.).*)", "destination": "/index.html" }]
 }
