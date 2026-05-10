@@ -1,78 +1,214 @@
 .wallet {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-  
-  .wallet h1 {
-    font-size: 1.5rem;
-    font-weight: 600;
-  }
-  .wallet {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-  
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .addressBadge {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--bg-card);
-    padding: 6px 12px;
-    border-radius: var(--radius-sm);
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    cursor: pointer;
-  }
-  
-  .balanceCard {
-    background: var(--glass-bg);
-    backdrop-filter: blur(8px);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-lg);
-    padding: 24px;
-    text-align: center;
-  }
-  
-  .balanceCard h2 {
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: var(--accent-green);
-  }
-  
-  .muted {
-    color: var(--text-muted);
-    font-size: 0.85rem;
-  }
-  
-  .tokenList {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .tokenRow {
-    display: flex;
-    justify-content: space-between;
-    background: var(--bg-card);
-    padding: 10px 16px;
-    border-radius: var(--radius-sm);
-  }
-  .address {
-    font-family: monospace;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    word-break: break-all;
-  }
-  
-  .tokenList {
-    list-style: none;
-    padding: 0;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ---- Header ---- */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.addressBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.addressBadge:hover {
+  border-color: var(--accent-green);
+}
+
+.addressText {
+  font-family: monospace;
+}
+
+.copyBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.copyBtn:hover {
+  color: var(--accent-green);
+}
+
+.explorerLink {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.explorerLink:hover {
+  color: var(--accent-blue);
+}
+
+/* ---- Balance Card ---- */
+.balanceCard {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.balanceCard h2 {
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--accent-green);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* ---- Token List ---- */
+.tokenList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tokenRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.tokenRow:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tokenInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tokenSymbol {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.tokenMint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.tokenBalance {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tokenAmount {
+  font-weight: 500;
+}
+
+.tokenUsd {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ---- Empty State ---- */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 60px 24px;
+}
+
+.emptyIcon {
+  font-size: 3rem;
+  margin-bottom: 8px;
+}
+
+.emptyState h1 {
+  margin: 0;
+}
+
+.emptyState p {
+  color: var(--text-muted);
+  max-width: 320px;
+}
+
+.connectBtn {
+  background: var(--accent-green);
+  color: #000;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 12px 28px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity 0.2s;
+}
+
+.connectBtn:hover {
+  opacity: 0.9;
+}
+
+/* ---- Misc ---- */
+.error {
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+/* ---- Skeleton Loading ---- */
+.skeleton {
+  background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+  min-height: 24px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
