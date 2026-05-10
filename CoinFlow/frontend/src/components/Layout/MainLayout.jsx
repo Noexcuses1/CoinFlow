@@ -2,7 +2,7 @@ import { Outlet } from 'react-router-dom';
 import Navbar from '../Navbar/Navbar';
 import Sidebar from '../Sidebar/Sidebar';
 import BottomNav from '../BottomNav/BottomNav';
-import SearchBar from '../SearchBar/SearchBar';
+
 import styles from './MainLayout.module.css';
 
 export default function MainLayout() {
@@ -13,7 +13,7 @@ export default function MainLayout() {
         <main className={styles.content}>
           <Outlet />
         </main>
-        <SearchBar />
+
         <BottomNav />
       </div>
       <Sidebar />

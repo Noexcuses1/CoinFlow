@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FiActivity, FiBriefcase, FiTrendingUp, FiBell } from 'react-icons/fi';
+import { FiActivity, FiBriefcase, FiTrendingUp, FiBell, FiSearch } from 'react-icons/fi';
 import styles from './Sidebar.module.css';
 
 const navItems = [
   { to: '/dashboard', icon: <FiActivity />, label: 'Stream' },
   { to: '/wallet', icon: <FiBriefcase />, label: 'Wallet' },
   { to: '/trade', icon: <FiTrendingUp />, label: 'Trade' },
+  { to: '/search', icon: <FiSearch />, label: 'Search' }, 
   { to: '/alerts', icon: <FiBell />, label: 'Alerts' },
 ];
 

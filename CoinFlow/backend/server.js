@@ -32,17 +32,23 @@ wss.on("connection", handleConnection);
 async function start() {
   await initializeDatabase();
   initQuickNode();
-  // Start listening to whale transactions (will call processWhaleTransaction)
-  subscribeWhaleTransactions(processWhaleTransaction);
-    // If QuickNode WebSocket isn't connected, start simulated whale alerts
-    if (!process.env.QUICKNODE_WSS_URL) {
+
+  // Start listening to whale transactions (or use simulator if unavailable)
+  try {
+    if (process.env.QUICKNODE_WSS_URL) {
+      subscribeWhaleTransactions(processWhaleTransaction);
+    } else {
       const { startWhaleSimulator } = await import('./services/whaleSimulator.js');
       startWhaleSimulator();
-    } else {
-      subscribeWhaleTransactions(processWhaleTransaction);
     }
+  } catch (err) {
+    console.error('Whale feed failed to start:', err.message);
+    // fallback to simulator if anything goes wrong
+    const { startWhaleSimulator } = await import('./services/whaleSimulator.js');
+    startWhaleSimulator();
+  }
 
-  server.listen(PORT, "0.0.0.0", () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 CoinFlow backend running on http://localhost:${PORT}`);
   });
 }
