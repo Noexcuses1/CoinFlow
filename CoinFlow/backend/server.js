@@ -34,6 +34,13 @@ async function start() {
   initQuickNode();
   // Start listening to whale transactions (will call processWhaleTransaction)
   subscribeWhaleTransactions(processWhaleTransaction);
+    // If QuickNode WebSocket isn't connected, start simulated whale alerts
+    if (!process.env.QUICKNODE_WSS_URL) {
+      const { startWhaleSimulator } = await import('./services/whaleSimulator.js');
+      startWhaleSimulator();
+    } else {
+      subscribeWhaleTransactions(processWhaleTransaction);
+    }
 
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 CoinFlow backend running on http://localhost:${PORT}`);
