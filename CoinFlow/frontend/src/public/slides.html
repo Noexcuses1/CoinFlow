@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoinFlow – Presentation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #070B11;
+      color: #F3F4F6;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+    }
+    .slide {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      text-align: center;
+    }
+    h1 { font-size: 3rem; font-weight: 700; color: #00FFA3; margin-bottom: 10px; }
+    h2 { font-size: 2rem; font-weight: 600; margin-bottom: 20px; }
+    h3 { font-size: 1.3rem; font-weight: 500; color: #9CA3AF; margin-bottom: 30px; }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      max-width: 800px;
+      width: 100%;
+      margin-top: 20px;
+    }
+    .card {
+      background: #111827;
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+      text-align: left;
+    }
+    .card h4 { font-size: 1rem; margin-bottom: 6px; }
+    .card p { font-size: 0.9rem; color: #9CA3AF; }
+    ul { list-style: none; padding: 0; font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+    li { margin-bottom: 12px; }
+    a { color: #3B82F6; text-decoration: none; }
+    .btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 30px;
+      background: #00FFA3;
+      color: #000;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    img { max-width: 100%; border-radius: 12px; margin: 12px 0; }
+  </style>
+</head>
+<body>
+  <div class="slide">
+    <h1>CoinFlow</h1>
+    <h3>Real‑time Solana Trading Terminal – Superteam Frontier Hackathon</h3>
+    <a class="btn" href="https://coin-flow-eight.vercel.app" target="_blank">Try it live</a>
+  </div>
+
+  <div class="slide">
+    <h2>The Problem</h2>
+    <ul>
+      <li>🔀 Traders juggle multiple tabs – charts, wallets, DEXs, alerts</li>
+      <li>🐋 No single dashboard to track smart money & trade instantly</li>
+      <li>📱 Mobile experience is often broken or ignored</li>
+    </ul>
+  </div>
+
+  <div class="slide">
+    <h2>CoinFlow Solution</h2>
+    <div class="card-grid">
+      <div class="card"><h4>🔥 Trending Tokens</h4><p>Real‑time prices, volume, and 24h change via DexScreener</p></div>
+      <div class="card"><h4>🐋 Whale Alerts</h4><p>WebSocket feed of large buys/sells with one‑click “Buy” button</p></div>
+      <div class="card"><h4>💱 One‑Click Swap</h4><p>Jupiter aggregation with instant quotes and wallet signing</p></div>
+      <div class="card"><h4>👛 Wallet Analytics</h4><p>SOL & SPL token balances fetched from QuickNode RPC</p></div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h2>User Flow</h2>
+    <ol style="font-size:1.1rem; max-width:500px; text-align:left;">
+      <li>Connect wallet (Solflare / Phantom)</li>
+      <li>Explore dashboard – trending tokens & whale moves</li>
+      <li>Click “Buy” on any alert → trade terminal auto‑fills token</li>
+      <li>Enter SOL amount → get Jupiter quote → execute swap</li>
+      <li>Check portfolio – real balances & tokens</li>
+    </ol>
+  </div>
+
+  <div class="slide">
+    <h2>Tech Stack & Integrations</h2>
+    <div class="card-grid">
+      <div class="card"><h4>⚡ QuickNode</h4><p>RPC for wallet balances + WebSocket for transaction monitoring</p></div>
+      <div class="card"><h4>🦊 Solflare</h4><p>Wallet adapter supporting Solflare, Phantom, Torus, Ledger</p></div>
+      <div class="card"><h4>🔄 Jupiter</h4><p>Swap API for quotes and route execution</p></div>
+      <div class="card"><h4>📊 DexScreener</h4><p>Free token discovery, trending, prices, liquidity</p></div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h2>Keeping CoinFlow Alive</h2>
+    <ul>
+      <li>⚡ Hosted on Vercel + Railway (free tiers) – 24/7 uptime</li>
+      <li>📢 Daily trending token alerts via Telegram bot</li>
+      <li>🐦 Weekly X threads with whale recaps to drive traffic</li>
+      <li>🗳️ Community votes on new token pairs added weekly</li>
+    </ul>
+  </div>
+
+  <div class="slide">
+    <h2>Thank You</h2>
+    <p style="font-size:1.3rem;">Try CoinFlow now</p>
+    <a class="btn" href="https://coin-flow-eight.vercel.app" target="_blank">Launch App</a>
+    <p style="margin-top:20px; color:#9CA3AF;">Built for the Superteam Frontier Hackathon</p>
+  </div>
+</body>
+</html>
