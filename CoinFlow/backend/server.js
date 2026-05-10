@@ -8,11 +8,9 @@ import cors from "cors";
 import { initializeDatabase } from "./db/postgres.js";
 import {
   initQuickNode,
-  subscribeWhaleTransactions,
 } from "./services/quicknode.js";
 import {
   handleConnection,
-  processWhaleTransaction,
 } from "./websocket/feedHandler.js";
 import apiRoutes from "./routes/api.js";
 
@@ -31,22 +29,12 @@ wss.on("connection", handleConnection);
 
 async function start() {
   await initializeDatabase();
-  initQuickNode();
+  initQuickNode();   // keep RPC for wallet balances
 
-  // Start listening to whale transactions (or use simulator if unavailable)
-  try {
-    if (process.env.QUICKNODE_WSS_URL) {
-      subscribeWhaleTransactions(processWhaleTransaction);
-    } else {
-      const { startWhaleSimulator } = await import('./services/whaleSimulator.js');
-      startWhaleSimulator();
-    }
-  } catch (err) {
-    console.error('Whale feed failed to start:', err.message);
-    // fallback to simulator if anything goes wrong
-    const { startWhaleSimulator } = await import('./services/whaleSimulator.js');
-    startWhaleSimulator();
-  }
+  // Use whale simulator for real‑time alerts (QuickNode WSS is disabled)
+  console.log('🐋 Starting whale alert simulator (real-time, DexScreener-based)');
+  const { startWhaleSimulator } = await import('./services/whaleSimulator.js');
+  startWhaleSimulator();
 
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 CoinFlow backend running on http://localhost:${PORT}`);
