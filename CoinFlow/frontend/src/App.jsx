@@ -9,8 +9,9 @@ export default function App() {
   return (
     <Routes>
       <Route element={<MainLayout />}>
-        <Route path="/" element={<Dashboard />} />
+        <Route index element={<Dashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/wallet" element={<Wallet />} />
         <Route path="/wallet/:address" element={<Wallet />} />
         <Route path="/trade" element={<Trade />} />
         <Route path="/alerts" element={<Alerts />} />

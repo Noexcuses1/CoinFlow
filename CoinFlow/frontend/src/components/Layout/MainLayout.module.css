@@ -9,47 +9,19 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  min-width: 0; /* allow main to shrink when sidebar grows */
 }
 
 .content {
   flex: 1;
   padding: 16px;
   overflow-y: auto;
-  /* padding-bottom for bottom nav on mobile */
-  padding-bottom: 80px;          /* extra space so content isn't hidden behind bottom nav */
+  padding-bottom: 80px; /* space for bottom nav on mobile */
 }
 
 @media (min-width: 769px) {
   .content {
     padding: 24px;
-    padding-bottom: 24px;        /* reset on desktop */
-  }
-}
-
-.sidebarWrapper {
-  width: 260px;
-  height: 100vh;
-  background: var(--bg-card);
-  border-left: 1px solid var(--border-subtle);
-  /* Desktop: always visible, in flow on the right */
-  display: block;
-}
-
-@media (max-width: 768px) {
-  .sidebarWrapper {
-    display: none;                /* hidden on mobile, bottom nav takes over */
-  }
-}
-.content {
-  flex: 1;
-  padding: 16px;
-  overflow-y: auto;
-  padding-bottom: 120px;  /* space for search + bottom nav */
-}
-
-@media (min-width: 769px) {
-  .content {
-    padding: 24px;
-    padding-bottom: 24px;  /* reset on desktop (no bottom elements) */
+    padding-bottom: 24px; /* reset on desktop */
   }
 }

@@ -1,96 +1,247 @@
 .dashboard {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ---------- Header ---------- */
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-green), #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stats {
+  display: flex;
+  gap: 16px;
+}
+
+.stat {
+  background: var(--bg-card);
+  padding: 6px 14px;
+  border-radius: var(--radius-lg);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+}
+
+/* ---------- Section Titles ---------- */
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------- Trending Grid ---------- */
+.trendingGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.trendingCard {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  transition: all 0.25s ease;
+  animation: fadeInUp 0.4s ease both;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.trendingCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0, 255, 163, 0.12);
+  border-color: rgba(0, 255, 163, 0.3);
+}
+
+.trendingHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.coinMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.symbol {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.name {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.copyBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.copyBtn:hover {
+  opacity: 1;
+}
+
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.price {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.change {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.positive {
+  color: var(--accent-green);
+}
+
+.negative {
+  color: var(--danger);
+}
+
+.volume {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.address {
+  font-family: monospace;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+/* ---------- Alert Cards ---------- */
+.alertGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.alertCard {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.alertHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.alertToken {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.alertType {
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.buy {
+  background: rgba(0, 255, 163, 0.15);
+  color: var(--accent-green);
+}
+
+.sell {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+}
+
+.alertValue {
+  font-size: 0.8rem;
+}
+
+.alertWallet {
+  font-family: monospace;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+/* ---------- Skeleton Loader ---------- */
+.skeleton {
+  background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  min-height: 80px;
+  border-radius: var(--radius-lg);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  
-  .headerRow {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
   .title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-primary);
+    font-size: 1.3rem;
   }
-  
-  .stats {
-    display: flex;
-    gap: 24px;
-  }
-  
-  .stat {
-    background: var(--bg-card);
-    padding: 8px 16px;
-    border-radius: var(--radius-sm);
-    font-size: 0.85rem;
-    color: var(--text-muted);
-  }
-  
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
-  }
-  .loader {
-    color: var(--text-muted);
-    text-align: center;
-    padding: 40px;
-  }
-  @media (max-width: 768px) {
-    .headerRow {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 12px;
-    }
-  
-    .grid {
-      grid-template-columns: 1fr;
-    }
-  }
-  .sectionTitle {
-    font-size: 1.2rem;
-    margin: 16px 0 12px;
-    font-weight: 600;
-  }
-  
+
   .trendingGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-    margin-bottom: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
-  
-  .trendingCard {
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+
+  .alertGrid {
+    grid-template-columns: 1fr;
   }
-  
-  .trendingHeader {
-    display: flex;
-    justify-content: space-between;
-    font-weight: 600;
-  }
-  
-  .positive {
-    color: var(--accent-green);
-  }
-  
-  .negative {
-    color: var(--danger);
-  }
-  
-  .volume {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-  }
-  
-  .loader {
-    text-align: center;
-    padding: 40px;
-    color: var(--text-muted);
-  }
+}

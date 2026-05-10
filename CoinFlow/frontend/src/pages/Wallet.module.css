@@ -8,3 +8,60 @@
     font-size: 1.5rem;
     font-weight: 600;
   }
+  .wallet {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .addressBadge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-card);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  
+  .balanceCard {
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    text-align: center;
+  }
+  
+  .balanceCard h2 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--accent-green);
+  }
+  
+  .muted {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+  
+  .tokenList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .tokenRow {
+    display: flex;
+    justify-content: space-between;
+    background: var(--bg-card);
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+  }

@@ -80,7 +80,13 @@ export async function getWalletBalances(walletAddress) {
   const cached = cache.get(cacheKey);
   if (cached) return cached;
 
-  if (!connection) {
+  if (!connection) return { sol: 0, tokens: [] };
+
+  // Validate address
+  try {
+    new PublicKey(walletAddress);
+  } catch {
+    console.warn(`Invalid public key: ${walletAddress} – returning empty balances`);
     return { sol: 0, tokens: [] };
   }
 

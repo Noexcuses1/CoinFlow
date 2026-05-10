@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getTrendingTokens, getTokenOverview, getWalletPortfolio, getTokenSecurity } from '../services/birdeye.js';
+import { getTrendingTokens, getTokenOverview, getTokenSecurity } from '../services/birdeye.js';
 import { getWalletBalances } from '../services/quicknode.js';
 import { getSwapQuote, buildSwapTransaction, getTokens } from '../services/jupiterService.js';
 import { getSwapQuote as getDexlabQuote } from '../services/dexlabService.js';
@@ -50,16 +50,12 @@ router.get('/token/:address/security', async (req, res) => {
 router.get('/wallet/:address', async (req, res) => {
   const { address } = req.params;
   try {
-    const [portfolio, rawBalances] = await Promise.allSettled([
-      getWalletPortfolio(address),
-      getWalletBalances(address),
-    ]);
-
+    const rawBalances = await getWalletBalances(address);
     res.json({
       address,
-      portfolio: portfolio.status === 'fulfilled' ? portfolio.value : null,
-      solBalance: rawBalances.status === 'fulfilled' ? rawBalances.value.sol : 0,
-      tokens: rawBalances.status === 'fulfilled' ? rawBalances.value.tokens : [],
+      portfolio: null,          
+      solBalance: rawBalances.sol,
+      tokens: rawBalances.tokens,
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch wallet data' });

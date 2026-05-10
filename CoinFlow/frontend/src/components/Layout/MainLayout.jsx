@@ -16,9 +16,7 @@ export default function MainLayout() {
         <SearchBar />
         <BottomNav />
       </div>
-      <div className={styles.sidebarWrapper}>
-        <Sidebar />
-      </div>
+      <Sidebar />
     </div>
   );
 }
