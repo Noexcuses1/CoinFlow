@@ -9,6 +9,7 @@ import {
   ConnectionProvider,
   WalletProvider as SolanaWalletProvider,
   useWallet as useSolanaWallet,
+useConnection,
 } from "@solana/wallet-adapter-react";
 import {
   WalletModalProvider,
@@ -21,12 +22,13 @@ import { clusterApiUrl } from "@solana/web3.js";
 const WalletContext = createContext(null);
 
 function AppWalletBridge({ children }) {
+  const { connection } = useConnection();
   const {
     publicKey,
     connecting: adapterConnecting,
     connected,
     disconnect: adapterDisconnect,
-    select,
+    sendTransaction,
     wallet,
   } = useSolanaWallet();
 
@@ -36,7 +38,12 @@ function AppWalletBridge({ children }) {
     () => (publicKey ? publicKey.toBase58() : null),
     [publicKey]
   );
-
+  const sendTx = useCallback(
+    async (transaction) => {
+      return await sendTransaction(transaction, connection);
+    },
+    [sendTransaction, connection]
+  );
   // Connect → open wallet selector modal
   const connect = useCallback(() => {
     // If already connected, do nothing
@@ -72,8 +79,9 @@ function AppWalletBridge({ children }) {
       connecting: adapterConnecting,
       connect,
       disconnect,
+      sendTransaction: sendTx,
     }),
-    [walletAddress, adapterConnecting, connect, disconnect]
+    [walletAddress, adapterConnecting, connect, disconnect, sendTx]
   );
 
   return (

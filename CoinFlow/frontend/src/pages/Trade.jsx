@@ -25,7 +25,7 @@ const QUICK_TOKENS = [
 const isValidMint = (addr) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr);
 
 export default function Trade() {
-  const { walletAddress } = useWallet();
+  const { walletAddress, sendTransaction } = useWallet();
 
   // "From" is always a known token (no custom)
   const [fromToken, setFromToken] = useState(QUICK_TOKENS[0]);
@@ -121,7 +121,7 @@ const resolveSymbol = async (address) => {
   };
   
   const executeSwap = async () => {
-    if (!quote || !window.solana) return;
+    if (!quote || !walletAddress) return;
     setExecuting(true);
     try {
       const res = await fetch(`${JUPITER_SWAP_API}/swap`, {
@@ -132,7 +132,7 @@ const resolveSymbol = async (address) => {
         },
         body: JSON.stringify({
           quoteResponse: quote,
-          userPublicKey: window.solana.publicKey.toString(),
+          userPublicKey: walletAddress,
           wrapAndUnwrapSol: true,
           dynamicComputeUnitLimit: true,
         }),
@@ -140,20 +140,17 @@ const resolveSymbol = async (address) => {
       if (!res.ok) throw new Error(`Swap build failed: ${res.status}`);
       const { swapTransaction } = await res.json();
   
-      // Convert base64 → Uint8Array (no Buffer needed)
+      // Decode base64 → bytes
       const binaryString = atob(swapTransaction);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
   
-      // Deserialize the transaction
       const transaction = VersionedTransaction.deserialize(bytes);
-  
-      // Sign and send
-      const signed = await window.solana.signAndSendTransaction(transaction);
-      setTxHash(signed.signature);
-      alert(`Transaction sent! ${signed.signature}`);
+      const signature = await sendTransaction(transaction);
+      setTxHash(signature);
+      alert(`Transaction sent! ${signature}`);
     } catch (err) {
       alert(`Swap failed: ${err.message}`);
     } finally {
