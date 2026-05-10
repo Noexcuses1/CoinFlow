@@ -1,11 +1,11 @@
 import axios from 'axios';
 import cache from './cache.js';
 
-const BASE_URL = 'https://public-api.birdeye.so';
+const BASE_URL = 'https://public-api.birdeye.so/v1';   // ★ v1 for public
 const API_KEY = process.env.BIRDEYE_API_KEY;
 
 if (!API_KEY) {
-  console.warn('⚠️ BIRDEYE_API_KEY not set – trending will use Jupiter fallback.');
+  console.warn('⚠️ BIRDEYE_API_KEY not set – using Jupiter fallback for trending data.');
 } else {
   console.log(`🔑 Birdeye API key loaded (length: ${API_KEY.length})`);
 }
@@ -30,7 +30,7 @@ async function rateLimit() {
   lastRequestTime = Date.now();
 }
 
-// ---------- Trending Tokens ----------
+// ---------- Trending Tokens (public endpoint) ----------
 export async function getTrendingTokens(limit = 20) {
   const cacheKey = `trending_${limit}`;
   const cached = cache.get(cacheKey);
@@ -39,15 +39,15 @@ export async function getTrendingTokens(limit = 20) {
   if (API_KEY) {
     try {
       await rateLimit();
-      const { data } = await birdeye.get('/public/getTrendingTokens', {
-        params: { sort_type: 'volume', limit },
+      // ★ Correct public endpoint: GET /v1/public/token/token_trending
+      const { data } = await birdeye.get('/public/token/token_trending', {
+        params: { sort_by: 'volume', offset: 0, limit },
       });
-      console.log('Birdeye trending response:', JSON.stringify(data).slice(0, 200));
+      console.log('Birdeye trending response (truncated):', JSON.stringify(data).slice(0, 300));
 
       let tokens = [];
-      // Birdeye wraps inside data.coins
       if (data?.data?.coins) tokens = data.data.coins;
-      else if (data?.coins) tokens = data.coins;          // some versions
+      else if (data?.coins) tokens = data.coins;
       else if (Array.isArray(data?.data)) tokens = data.data;
       else if (Array.isArray(data)) tokens = data;
 
@@ -87,7 +87,7 @@ export async function getTokenOverview(address) {
 
   try {
     await rateLimit();
-    const { data } = await birdeye.get('/public/token_overview', {
+    const { data } = await birdeye.get('/public/token/token_overview', {
       params: { address },
     });
     const tokenData = data?.data || data;
@@ -99,7 +99,7 @@ export async function getTokenOverview(address) {
   }
 }
 
-// ---------- Wallet Portfolio ----------
+// ---------- Wallet Portfolio (use Birdeye's wallet endpoint) ----------
 export async function getWalletPortfolio(walletAddress) {
   const cacheKey = `wallet_${walletAddress}`;
   const cached = cache.get(cacheKey);
@@ -110,7 +110,6 @@ export async function getWalletPortfolio(walletAddress) {
     const { data } = await birdeye.get('/public/wallet/token_list', {
       params: { wallet: walletAddress },
     });
-    // Birdeye returns { data: { items: [...] } }
     const items = data?.data?.items || data?.items || [];
     cache.set(cacheKey, items, 15);
     return items;
@@ -128,7 +127,7 @@ export async function getTokenSecurity(address) {
 
   try {
     await rateLimit();
-    const { data } = await birdeye.get('/public/token_security', {
+    const { data } = await birdeye.get('/public/token/token_security', {
       params: { address },
     });
     cache.set(cacheKey, data?.data || data, 60);
