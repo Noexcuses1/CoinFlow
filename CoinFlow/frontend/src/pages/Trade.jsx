@@ -1,15 +1,23 @@
-import { useState, useEffect } from 'react';
-import { FiRepeat, FiAlertCircle, FiLoader, FiX, FiCheck, FiExternalLink } from 'react-icons/fi';
-import { useWallet } from '../context/WalletContext';
-import styles from './Trade.module.css';
+import { useState, useEffect } from "react";
+import {
+  FiRepeat,
+  FiAlertCircle,
+  FiLoader,
+  FiX,
+  FiCheck,
+  FiExternalLink,
+} from "react-icons/fi";
+import { useWallet } from "../context/WalletContext";
+import styles from "./Trade.module.css";
+import { useSearchParams } from "react-router-dom";
 
-const API_URL = import.meta.env.VITE_API_URL || '';
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 const QUICK_TOKENS = [
-  { symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112' },
-  { symbol: 'USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' },
-  { symbol: 'BONK', mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263' },
-  { symbol: 'JUP', mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN' },
+  { symbol: "SOL", mint: "So11111111111111111111111111111111111111112" },
+  { symbol: "USDC", mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" },
+  { symbol: "BONK", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" },
+  { symbol: "JUP", mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN" },
 ];
 
 const isValidMint = (addr) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr);
@@ -19,11 +27,11 @@ export default function Trade() {
 
   // "From" is always a known token (no custom)
   const [fromToken, setFromToken] = useState(QUICK_TOKENS[0]);
-  const [fromAmount, setFromAmount] = useState('');
+  const [fromAmount, setFromAmount] = useState("");
 
   // "To" can be known or custom
   const [toToken, setToToken] = useState(QUICK_TOKENS[1]);
-  const [customTo, setCustomTo] = useState('');
+  const [customTo, setCustomTo] = useState("");
   const [showCustomTo, setShowCustomTo] = useState(false);
 
   const [slippage, setSlippage] = useState(0.5);
@@ -33,13 +41,27 @@ export default function Trade() {
 
   // Swap execution states
   const [executing, setExecuting] = useState(false);
-  const [txHash, setTxHash] = useState('');
+  const [txHash, setTxHash] = useState("");
 
   // Jupiter token list (for resolving symbols)
   const [tokenList, setTokenList] = useState([]);
 
+  const [searchParams] = useSearchParams();
+
+  // When the page loads from an alert, pre‑fill the token
   useEffect(() => {
-    fetch('https://token.jup.ag/strict')
+    const tokenAddress = searchParams.get("token");
+    const side = searchParams.get("side");
+    if (tokenAddress && side === "buy") {
+      // Set as output token (we want to buy this token)
+      setShowCustomTo(true);
+      setCustomTo(tokenAddress);
+      // The symbol will be resolved automatically by the getTokenSymbol logic already in Trade.jsx
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    fetch("https://token.jup.ag/strict")
       .then((res) => res.json())
       .then((data) => setTokenList(data))
       .catch(() => {});
@@ -55,10 +77,10 @@ export default function Trade() {
   useEffect(() => {
     if (showCustomTo && isValidMint(customTo)) {
       if (tokenList.length > 0) {
-        const symbol = getTokenSymbol(customTo) || 'CUSTOM';
+        const symbol = getTokenSymbol(customTo) || "CUSTOM";
         setToToken({ symbol, mint: customTo });
       } else {
-        setToToken({ symbol: 'CUSTOM', mint: customTo });
+        setToToken({ symbol: "CUSTOM", mint: customTo });
       }
     } else if (!showCustomTo) {
       // do nothing, keep selected known token
@@ -71,8 +93,8 @@ export default function Trade() {
     setError(null);
     try {
       const res = await fetch(`${API_URL}/api/trade/quote`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           inputMint: fromToken.mint,
           outputMint: toToken.mint,
@@ -84,11 +106,11 @@ export default function Trade() {
       if (data.success) {
         setQuote(data.quote);
       } else {
-        setError(data.error || 'Quote failed');
+        setError(data.error || "Quote failed");
         setQuote(null);
       }
     } catch (err) {
-      setError('Network error');
+      setError("Network error");
       setQuote(null);
     } finally {
       setLoading(false);
@@ -97,7 +119,7 @@ export default function Trade() {
 
   const executeSwap = async () => {
     if (!quote || !walletAddress || !window.solana) {
-      setError('Please connect a wallet to execute the swap.');
+      setError("Please connect a wallet to execute the swap.");
       return;
     }
 
@@ -106,8 +128,8 @@ export default function Trade() {
     try {
       // Build the swap transaction from the backend
       const buildRes = await fetch(`${API_URL}/api/trade/build`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           quoteResponse: quote,
           wallet: walletAddress,
@@ -115,19 +137,19 @@ export default function Trade() {
       });
       const buildData = await buildRes.json();
       if (!buildData.success) {
-        setError(buildData.error || 'Failed to build swap transaction.');
+        setError(buildData.error || "Failed to build swap transaction.");
         return;
       }
 
       // Decode the base64 transaction
-      const swapTxBuf = Buffer.from(buildData.swapTransaction, 'base64');
+      const swapTxBuf = Buffer.from(buildData.swapTransaction, "base64");
       // Send for signing via Phantom/Solflare
       const signedTx = await window.solana.signAndSendTransaction(
         JSON.parse(swapTxBuf.toString())
       );
       setTxHash(signedTx.signature);
     } catch (err) {
-      setError(err.message || 'Transaction failed');
+      setError(err.message || "Transaction failed");
     } finally {
       setExecuting(false);
     }
@@ -139,7 +161,7 @@ export default function Trade() {
     setFromToken(toToken);
     setToToken(tempFrom);
     setShowCustomTo(false);
-    setCustomTo('');
+    setCustomTo("");
     setQuote(null);
     setError(null);
   };
@@ -162,7 +184,9 @@ export default function Trade() {
             <select
               value={fromToken.mint}
               onChange={(e) => {
-                const found = QUICK_TOKENS.find((t) => t.mint === e.target.value);
+                const found = QUICK_TOKENS.find(
+                  (t) => t.mint === e.target.value
+                );
                 if (found) setFromToken(found);
               }}
               className={styles.select}
@@ -184,7 +208,11 @@ export default function Trade() {
         </div>
 
         {/* SWAP BUTTON */}
-        <button className={styles.swapBtn} onClick={swapTokens} title="Reverse tokens">
+        <button
+          className={styles.swapBtn}
+          onClick={swapTokens}
+          title="Reverse tokens"
+        >
           <FiRepeat />
         </button>
 
@@ -193,13 +221,13 @@ export default function Trade() {
           <label>To (estimated)</label>
           <div className={styles.tokenSelectWrapper}>
             <select
-              value={showCustomTo ? 'custom' : toToken.mint}
+              value={showCustomTo ? "custom" : toToken.mint}
               onChange={(e) => {
                 const val = e.target.value;
-                if (val === 'custom') {
+                if (val === "custom") {
                   setShowCustomTo(true);
-                  setToToken({ symbol: 'CUSTOM', mint: '' });
-                  setCustomTo('');
+                  setToToken({ symbol: "CUSTOM", mint: "" });
+                  setCustomTo("");
                 } else {
                   setShowCustomTo(false);
                   const found = QUICK_TOKENS.find((t) => t.mint === val);
@@ -225,7 +253,7 @@ export default function Trade() {
                   onChange={(e) => {
                     const val = e.target.value.trim();
                     setCustomTo(val);
-                    if (val === '') {
+                    if (val === "") {
                       setShowCustomTo(false);
                       setToToken(QUICK_TOKENS[1]);
                     }
@@ -234,14 +262,14 @@ export default function Trade() {
                 />
                 {isValidMint(customTo) && (
                   <span className={styles.customSymbol}>
-                    {getTokenSymbol(customTo) || '✔'}
+                    {getTokenSymbol(customTo) || "✔"}
                   </span>
                 )}
                 <button
                   className={styles.clearCustom}
                   onClick={() => {
                     setShowCustomTo(false);
-                    setCustomTo('');
+                    setCustomTo("");
                     setToToken(QUICK_TOKENS[1]);
                   }}
                 >
@@ -252,13 +280,15 @@ export default function Trade() {
 
             {!showCustomTo && (
               <div className={styles.estimated}>
-                {quote ? `≈ ${(parseInt(quote.outAmount) / 1e6).toFixed(6)}` : '—'}
+                {quote
+                  ? `≈ ${(parseInt(quote.outAmount) / 1e6).toFixed(6)}`
+                  : "—"}
               </div>
             )}
           </div>
           {showCustomTo && (
             <div className={styles.estimatedSmall}>
-              {quote ? `≈ ${(parseInt(quote.outAmount) / 1e6).toFixed(6)}` : ''}
+              {quote ? `≈ ${(parseInt(quote.outAmount) / 1e6).toFixed(6)}` : ""}
             </div>
           )}
         </div>
@@ -285,7 +315,7 @@ export default function Trade() {
 
         {/* QUOTE BUTTON */}
         <button
-          className={`${styles.quoteBtn} ${loading ? styles.loadingBtn : ''}`}
+          className={`${styles.quoteBtn} ${loading ? styles.loadingBtn : ""}`}
           onClick={fetchQuote}
           disabled={
             loading ||
@@ -300,7 +330,7 @@ export default function Trade() {
               <FiLoader className={styles.spinner} /> Fetching best price...
             </span>
           ) : (
-            'Get Quote'
+            "Get Quote"
           )}
         </button>
 
@@ -310,7 +340,8 @@ export default function Trade() {
             <div className={styles.quoteRow}>
               <span>Rate</span>
               <span>
-                1 {fromToken.symbol} ≈ {(parseInt(quote.outAmount) / 1e6).toFixed(6)}{' '}
+                1 {fromToken.symbol} ≈{" "}
+                {(parseInt(quote.outAmount) / 1e6).toFixed(6)}{" "}
                 {showCustomTo && getTokenSymbol(customTo)
                   ? getTokenSymbol(customTo)
                   : toToken.symbol}
@@ -318,21 +349,26 @@ export default function Trade() {
             </div>
             <div className={styles.quoteRow}>
               <span>Price Impact</span>
-              <span className={quote.priceImpactPct > 1 ? styles.highImpact : ''}>
-                {quote.priceImpactPct || '0'}%
+              <span
+                className={quote.priceImpactPct > 1 ? styles.highImpact : ""}
+              >
+                {quote.priceImpactPct || "0"}%
               </span>
             </div>
             <div className={styles.quoteRow}>
               <span>Route</span>
               <span className={styles.route}>
-                {quote.routePlan?.map((r) => r.swapInfo?.label).join(' → ') || 'Jupiter'}
+                {quote.routePlan?.map((r) => r.swapInfo?.label).join(" → ") ||
+                  "Jupiter"}
               </span>
             </div>
 
             {/* EXECUTE SWAP BUTTON */}
             {walletAddress ? (
               <button
-                className={`${styles.quoteBtn} ${executing ? styles.loadingBtn : ''}`}
+                className={`${styles.quoteBtn} ${
+                  executing ? styles.loadingBtn : ""
+                }`}
                 onClick={executeSwap}
                 disabled={executing}
               >
@@ -341,7 +377,7 @@ export default function Trade() {
                     <FiLoader className={styles.spinner} /> Executing Swap...
                   </span>
                 ) : (
-                  'Execute Swap'
+                  "Execute Swap"
                 )}
               </button>
             ) : (
@@ -352,7 +388,7 @@ export default function Trade() {
 
             {txHash && (
               <div className={styles.txSuccess}>
-                <FiCheck /> Swap successful!{' '}
+                <FiCheck /> Swap successful!{" "}
                 <a
                   href={`https://solscan.io/tx/${txHash}`}
                   target="_blank"

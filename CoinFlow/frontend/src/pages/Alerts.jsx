@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FiActivity, FiArrowUp, FiArrowDown } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import { FiActivity, FiArrowUp, FiArrowDown, FiCopy, FiCheck, FiShoppingCart } from 'react-icons/fi';
 import styles from './Alerts.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -7,6 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 export default function Alerts() {
   const [alerts, setAlerts] = useState([]);
   const [connected, setConnected] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -28,7 +30,6 @@ export default function Alerts() {
     };
 
     ws.onerror = () => {
-      // Fallback to HTTP
       fetch(`${API_URL}/api/alerts`)
         .then((res) => res.json())
         .then((data) => {
@@ -56,32 +57,65 @@ export default function Alerts() {
         )}
 
         {alerts.map((alert, i) => (
-          <div key={alert.tx_hash || i} className={`glass-panel ${styles.alertCard}`}>
-            <div className={styles.cardTop}>
-              <div className={styles.tokenInfo}>
-                <span className={styles.tokenSymbol}>{alert.token}</span>
-                <span className={`${styles.badge} ${alert.type === 'buy' ? styles.buy : styles.sell}`}>
-                  {alert.type === 'buy' ? <FiArrowUp /> : <FiArrowDown />}
-                  {alert.type.toUpperCase()}
-                </span>
-              </div>
-              <div className={styles.value}>
-                ${Number(alert.value_usd).toLocaleString()}
-              </div>
-            </div>
-            <div className={styles.cardBottom}>
-              <span className={styles.wallet}>{alert.wallet}</span>
-              <span className={styles.time}>
-                {new Date(alert.created_at).toLocaleTimeString()}
-              </span>
-              {alert.profit_percent && (
-                <span className={`${styles.profit} ${alert.profit_percent >= 0 ? styles.positive : styles.negative}`}>
-                  {alert.profit_percent > 0 ? '+' : ''}{alert.profit_percent}%
-                </span>
-              )}
-            </div>
-          </div>
+          <AlertCard key={alert.tx_hash || i} alert={alert} navigate={navigate} />
         ))}
+      </div>
+    </div>
+  );
+}
+
+function AlertCard({ alert, navigate }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyAddress = async () => {
+    if (alert.tx_hash) {
+      await navigator.clipboard.writeText(alert.tx_hash);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  const handleBuy = () => {
+    // Navigate to trade page with token as output (swap SOL → token)
+    navigate(`/trade?token=${alert.token}&side=buy`);
+  };
+
+  return (
+    <div className={`glass-panel ${styles.alertCard}`}>
+      <div className={styles.cardTop}>
+        <div className={styles.tokenInfo}>
+          <span
+            className={styles.tokenSymbol}
+            onClick={copyAddress}
+            title="Click to copy TX hash"
+          >
+            {alert.token}
+          </span>
+          <button onClick={copyAddress} className={styles.copyBtn}>
+            {copied ? <FiCheck size={14} /> : <FiCopy size={14} />}
+          </button>
+          <span className={`${styles.badge} ${alert.type === 'buy' ? styles.buy : styles.sell}`}>
+            {alert.type === 'buy' ? <FiArrowUp /> : <FiArrowDown />}
+            {alert.type.toUpperCase()}
+          </span>
+        </div>
+        <div className={styles.value}>
+          ${Number(alert.value_usd).toLocaleString()}
+        </div>
+      </div>
+      <div className={styles.cardBottom}>
+        <span className={styles.wallet}>{alert.wallet}</span>
+        <span className={styles.time}>
+          {new Date(alert.created_at).toLocaleTimeString()}
+        </span>
+        {alert.profit_percent && (
+          <span className={`${styles.profit} ${alert.profit_percent >= 0 ? styles.positive : styles.negative}`}>
+            {alert.profit_percent > 0 ? '+' : ''}{alert.profit_percent}%
+          </span>
+        )}
+        <button onClick={handleBuy} className={styles.buyBtn} title="Swap SOL to this token">
+          Buy
+        </button>
       </div>
     </div>
   );
