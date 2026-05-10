@@ -5,7 +5,7 @@ import styles from './Sidebar.module.css';
 
 const navItems = [
   { to: '/dashboard', icon: <FiActivity />, label: 'Stream' },
-  { to: '/wallet/demo', icon: <FiBriefcase />, label: 'Wallet' },
+  { to: '/wallet', icon: <FiBriefcase />, label: 'Wallet' },
   { to: '/trade', icon: <FiTrendingUp />, label: 'Trade' },
   { to: '/alerts', icon: <FiBell />, label: 'Alerts' },
 ];

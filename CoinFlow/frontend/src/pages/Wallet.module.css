@@ -65,3 +65,14 @@
     padding: 10px 16px;
     border-radius: var(--radius-sm);
   }
+  .address {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    word-break: break-all;
+  }
+  
+  .tokenList {
+    list-style: none;
+    padding: 0;
+  }
