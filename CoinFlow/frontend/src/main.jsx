@@ -5,6 +5,7 @@ import App from './App';
 import { WalletProvider } from './context/WalletContext';
 import './styles/variables.css';
 import './styles/global.css';
+import "@solana/wallet-adapter-react-ui/styles.css";
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
