@@ -10,6 +10,8 @@ import {
 import { useWallet } from "../context/WalletContext";
 import styles from "./Trade.module.css";
 import { useSearchParams } from "react-router-dom";
+import { VersionedTransaction } from "@solana/web3.js";
+
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -43,10 +45,27 @@ export default function Trade() {
   const [executing, setExecuting] = useState(false);
   const [txHash, setTxHash] = useState("");
 
+  // Custom "From" field
+const [showCustomFrom, setShowCustomFrom] = useState(false);
+const [customFrom, setCustomFrom] = useState("");
+
   // Jupiter token list (for resolving symbols)
   const [tokenList, setTokenList] = useState([]);
 
   const [searchParams] = useSearchParams();
+
+  const JUPITER_SWAP_API = "https://api.jup.ag/swap/v1";
+  const JUPITER_API_KEY = "jup_35dd4af79efee1aafc75dd0013f72a800704ce4d9d1b243657d4f37f1899edc8";
+
+const resolveSymbol = async (address) => {
+  try {
+    const res = await fetch(`${API_URL}/api/token/${address}`);
+    const data = await res.json();
+    return data?.symbol || null;
+  } catch {
+    return null;
+  }
+};
 
   // When the page loads from an alert, pre‑fill the token
   useEffect(() => {
@@ -60,12 +79,6 @@ export default function Trade() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    fetch("https://token.jup.ag/strict")
-      .then((res) => res.json())
-      .then((data) => setTokenList(data))
-      .catch(() => {});
-  }, []);
 
   const getTokenSymbol = (mint) => {
     if (!tokenList.length) return null;
@@ -73,95 +86,96 @@ export default function Trade() {
     return t ? t.symbol : null;
   };
 
-  // Update toToken symbol when customTo changes
   useEffect(() => {
     if (showCustomTo && isValidMint(customTo)) {
-      if (tokenList.length > 0) {
-        const symbol = getTokenSymbol(customTo) || "CUSTOM";
-        setToToken({ symbol, mint: customTo });
-      } else {
-        setToToken({ symbol: "CUSTOM", mint: customTo });
-      }
-    } else if (!showCustomTo) {
-      // do nothing, keep selected known token
+      resolveSymbol(customTo).then((sym) => {
+        setToToken({ symbol: sym || 'CUSTOM', mint: customTo });
+      });
     }
-  }, [customTo, showCustomTo, tokenList]);
+  }, [customTo, showCustomTo]);
+
 
   const fetchQuote = async () => {
     if (!fromAmount || parseFloat(fromAmount) <= 0) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/trade/quote`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          inputMint: fromToken.mint,
-          outputMint: toToken.mint,
-          amount: Math.floor(parseFloat(fromAmount) * 1e9).toString(),
-          slippageBps: Math.floor(slippage * 100),
-        }),
+      const params = new URLSearchParams({
+        inputMint: fromToken.mint,
+        outputMint: toToken.mint,
+        amount: Math.floor(parseFloat(fromAmount) * 1e9).toString(),
+        slippageBps: Math.floor(slippage * 100),
       });
+      const res = await fetch(`${JUPITER_SWAP_API}/quote?${params}`, {
+        headers: { "x-api-key": JUPITER_API_KEY },
+      });
+      if (!res.ok) throw new Error(`Quote failed: ${res.status}`);
       const data = await res.json();
-      if (data.success) {
-        setQuote(data.quote);
-      } else {
-        setError(data.error || "Quote failed");
-        setQuote(null);
-      }
+      setQuote(data);
     } catch (err) {
-      setError("Network error");
+      setError(err.message);
       setQuote(null);
     } finally {
       setLoading(false);
     }
   };
-
+  
   const executeSwap = async () => {
-    if (!quote || !walletAddress || !window.solana) {
-      setError("Please connect a wallet to execute the swap.");
-      return;
-    }
-
+    if (!quote || !window.solana) return;
     setExecuting(true);
-    setError(null);
     try {
-      // Build the swap transaction from the backend
-      const buildRes = await fetch(`${API_URL}/api/trade/build`, {
+      const res = await fetch(`${JUPITER_SWAP_API}/swap`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": JUPITER_API_KEY,
+        },
         body: JSON.stringify({
           quoteResponse: quote,
-          wallet: walletAddress,
+          userPublicKey: window.solana.publicKey.toString(),
+          wrapAndUnwrapSol: true,
+          dynamicComputeUnitLimit: true,
         }),
       });
-      const buildData = await buildRes.json();
-      if (!buildData.success) {
-        setError(buildData.error || "Failed to build swap transaction.");
-        return;
+      if (!res.ok) throw new Error(`Swap build failed: ${res.status}`);
+      const { swapTransaction } = await res.json();
+  
+      // Convert base64 → Uint8Array (no Buffer needed)
+      const binaryString = atob(swapTransaction);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
       }
-
-      // Decode the base64 transaction
-      const swapTxBuf = Buffer.from(buildData.swapTransaction, "base64");
-      // Send for signing via Phantom/Solflare
-      const signedTx = await window.solana.signAndSendTransaction(
-        JSON.parse(swapTxBuf.toString())
-      );
-      setTxHash(signedTx.signature);
+  
+      // Deserialize the transaction
+      const transaction = VersionedTransaction.deserialize(bytes);
+  
+      // Sign and send
+      const signed = await window.solana.signAndSendTransaction(transaction);
+      setTxHash(signed.signature);
+      alert(`Transaction sent! ${signed.signature}`);
     } catch (err) {
-      setError(err.message || "Transaction failed");
+      alert(`Swap failed: ${err.message}`);
     } finally {
       setExecuting(false);
     }
   };
 
   const swapTokens = () => {
-    if (showCustomTo) return; // can't swap custom token into From
+    // Swap everything: token objects, custom addresses, visibility
     const tempFrom = fromToken;
-    setFromToken(toToken);
+    const tempTo = toToken;
+    const tempCustomFrom = customFrom;
+    const tempCustomTo = customTo;
+    const tempShowFrom = showCustomFrom;
+    const tempShowTo = showCustomTo;
+  
+    setFromToken(tempTo);
     setToToken(tempFrom);
-    setShowCustomTo(false);
-    setCustomTo("");
+    setCustomFrom(tempCustomTo);
+    setCustomTo(tempCustomFrom);
+    setShowCustomFrom(tempShowTo);
+    setShowCustomTo(tempShowFrom);
     setQuote(null);
     setError(null);
   };
@@ -172,22 +186,29 @@ export default function Trade() {
     setError(null);
   }, [fromAmount, fromToken.mint, toToken.mint]);
 
+ 
   return (
     <div className={styles.trade}>
       <h1>Swap Terminal</h1>
 
       <div className={styles.swapCard}>
-        {/* FROM (always known token) */}
+        {/* FROM */}
         <div className={styles.inputRow}>
           <label>From</label>
           <div className={styles.tokenSelectWrapper}>
             <select
-              value={fromToken.mint}
+              value={showCustomFrom ? "custom" : fromToken.mint}
               onChange={(e) => {
-                const found = QUICK_TOKENS.find(
-                  (t) => t.mint === e.target.value
-                );
-                if (found) setFromToken(found);
+                const val = e.target.value;
+                if (val === "custom") {
+                  setShowCustomFrom(true);
+                  setCustomFrom("");
+                  setFromToken({ symbol: "CUSTOM", mint: "" });
+                } else {
+                  setShowCustomFrom(false);
+                  const found = QUICK_TOKENS.find((t) => t.mint === val);
+                  if (found) setFromToken(found);
+                }
               }}
               className={styles.select}
             >
@@ -196,7 +217,42 @@ export default function Trade() {
                   {t.symbol}
                 </option>
               ))}
+              <option value="custom">Other (paste CA)</option>
             </select>
+
+            {showCustomFrom && (
+              <div className={styles.customInputWrapper}>
+                <input
+                  type="text"
+                  placeholder="Paste token address..."
+                  value={customFrom}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    setCustomFrom(val);
+                    if (val === "") {
+                      setShowCustomFrom(false);
+                      setFromToken(QUICK_TOKENS[0]);
+                    }
+                  }}
+                  className={styles.customInput}
+                />
+                {isValidMint(customFrom) && (
+                  <span className={styles.customSymbol}>
+                    {fromToken.symbol !== "CUSTOM" ? fromToken.symbol : "✔"}
+                  </span>
+                )}
+                <button
+                  className={styles.clearCustom}
+                  onClick={() => {
+                    setShowCustomFrom(false);
+                    setCustomFrom("");
+                    setFromToken(QUICK_TOKENS[0]);
+                  }}
+                >
+                  <FiX size={14} />
+                </button>
+              </div>
+            )}
             <input
               type="number"
               placeholder="0.0"
@@ -208,15 +264,11 @@ export default function Trade() {
         </div>
 
         {/* SWAP BUTTON */}
-        <button
-          className={styles.swapBtn}
-          onClick={swapTokens}
-          title="Reverse tokens"
-        >
+        <button className={styles.swapBtn} onClick={swapTokens} title="Reverse">
           <FiRepeat />
         </button>
 
-        {/* TO (known or custom) */}
+        {/* TO */}
         <div className={styles.inputRow}>
           <label>To (estimated)</label>
           <div className={styles.tokenSelectWrapper}>
@@ -226,8 +278,8 @@ export default function Trade() {
                 const val = e.target.value;
                 if (val === "custom") {
                   setShowCustomTo(true);
-                  setToToken({ symbol: "CUSTOM", mint: "" });
                   setCustomTo("");
+                  setToToken({ symbol: "CUSTOM", mint: "" });
                 } else {
                   setShowCustomTo(false);
                   const found = QUICK_TOKENS.find((t) => t.mint === val);
@@ -262,7 +314,7 @@ export default function Trade() {
                 />
                 {isValidMint(customTo) && (
                   <span className={styles.customSymbol}>
-                    {getTokenSymbol(customTo) || "✔"}
+                    {toToken.symbol !== "CUSTOM" ? toToken.symbol : "✔"}
                   </span>
                 )}
                 <button
@@ -313,7 +365,6 @@ export default function Trade() {
           </div>
         )}
 
-        {/* QUOTE BUTTON */}
         <button
           className={`${styles.quoteBtn} ${loading ? styles.loadingBtn : ""}`}
           onClick={fetchQuote}
@@ -321,8 +372,7 @@ export default function Trade() {
             loading ||
             !fromAmount ||
             !isValidMint(fromToken.mint) ||
-            (showCustomTo && !isValidMint(customTo)) ||
-            (!showCustomTo && !isValidMint(toToken.mint))
+            !isValidMint(toToken.mint)
           }
         >
           {loading ? (
@@ -334,7 +384,6 @@ export default function Trade() {
           )}
         </button>
 
-        {/* QUOTE DETAILS */}
         {quote && !loading && (
           <div className={styles.quoteInfo}>
             <div className={styles.quoteRow}>
@@ -342,16 +391,12 @@ export default function Trade() {
               <span>
                 1 {fromToken.symbol} ≈{" "}
                 {(parseInt(quote.outAmount) / 1e6).toFixed(6)}{" "}
-                {showCustomTo && getTokenSymbol(customTo)
-                  ? getTokenSymbol(customTo)
-                  : toToken.symbol}
+                {toToken.symbol}
               </span>
             </div>
             <div className={styles.quoteRow}>
               <span>Price Impact</span>
-              <span
-                className={quote.priceImpactPct > 1 ? styles.highImpact : ""}
-              >
+              <span className={quote.priceImpactPct > 1 ? styles.highImpact : ""}>
                 {quote.priceImpactPct || "0"}%
               </span>
             </div>
@@ -363,12 +408,9 @@ export default function Trade() {
               </span>
             </div>
 
-            {/* EXECUTE SWAP BUTTON */}
             {walletAddress ? (
               <button
-                className={`${styles.quoteBtn} ${
-                  executing ? styles.loadingBtn : ""
-                }`}
+                className={`${styles.quoteBtn} ${executing ? styles.loadingBtn : ""}`}
                 onClick={executeSwap}
                 disabled={executing}
               >

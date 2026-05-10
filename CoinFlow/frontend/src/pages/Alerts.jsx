@@ -76,8 +76,9 @@ function AlertCard({ alert, navigate }) {
   };
 
   const handleBuy = () => {
-    // Navigate to trade page with token as output (swap SOL → token)
-    navigate(`/trade?token=${alert.token}&side=buy`);
+    // Use mint address, not symbol
+    const tokenAddress = alert.address || alert.token;  // fallback
+    navigate(`/trade?token=${tokenAddress}&side=buy`);
   };
 
   return (

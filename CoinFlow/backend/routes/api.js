@@ -108,7 +108,6 @@ router.post('/trade/quote', async (req, res) => {
 // Build swap transaction from quote
 router.post('/trade/build', async (req, res) => {
   const { quoteResponse, wallet } = req.body;
-
   if (!quoteResponse || !wallet) {
     return res.status(400).json({ error: 'Missing quoteResponse or wallet address' });
   }
@@ -123,7 +122,7 @@ router.post('/trade/build', async (req, res) => {
     });
     res.json({
       success: true,
-      swapTransaction: swapTx.swapTransaction,     // base64 serialised transaction
+      swapTransaction: swapTx.swapTransaction,
       lastValidBlockHeight: swapTx.lastValidBlockHeight,
       aggregator: 'Jupiter',
     });
