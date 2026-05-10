@@ -245,3 +245,25 @@
     grid-template-columns: 1fr;
   }
 }
+.telegramBanner {
+  background: rgba(0, 255, 163, 0.08);
+  border: 1px solid rgba(0, 255, 163, 0.2);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.telegramLink {
+  color: var(--accent-green);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.telegramLink:hover {
+  text-decoration: underline;
+}

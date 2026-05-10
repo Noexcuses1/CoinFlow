@@ -122,6 +122,17 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className={styles.telegramBanner}>
+        <a
+          href="https://t.me/+jbl7jjnm3F00MzM0%0A"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.telegramLink}
+        >
+          📢 Get real‑time whale alerts on Telegram →
+        </a>
+      </div>
+
       <section>
         <h2 className={styles.sectionTitle}>🔥 Trending Tokens</h2>
         <div className={styles.trendingGrid}>

@@ -1,5 +1,6 @@
 import { broadcastAlert } from '../websocket/feedHandler.js';
 import { getTrendingTokens } from './birdeye.js';
+import { sendAlert } from './telegram.js';
 
 let intervalId = null;
 
@@ -32,6 +33,8 @@ export function startWhaleSimulator(intervalMs = 12000) {
       };
 
       broadcastAlert(alert);
+      sendAlert(alert).catch((err) => console.error('Telegram send failed:', err.message));
+      
     } catch (err) {
       console.error('Whale simulator error:', err.message);
     }
