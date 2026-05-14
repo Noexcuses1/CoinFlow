@@ -15,10 +15,13 @@ import {
   WalletModalProvider,
   useWalletModal,
 } from "@solana/wallet-adapter-react-ui";
-import { PhantomWalletAdapter, TorusWalletAdapter, LedgerWalletAdapter } from "@solana/wallet-adapter-wallets";
+import {
+  PhantomWalletAdapter,
+  TorusWalletAdapter,
+  LedgerWalletAdapter,
+} from "@solana/wallet-adapter-wallets";
 import { clusterApiUrl } from "@solana/web3.js";
 
-// ---------- Custom context ----------
 const WalletContext = createContext(null);
 
 function AppWalletBridge({ children }) {
@@ -31,6 +34,7 @@ function AppWalletBridge({ children }) {
     sendTransaction,
     wallet,
     wallets,
+    select,
   } = useSolanaWallet();
 
   const { setVisible } = useWalletModal();
@@ -47,19 +51,31 @@ function AppWalletBridge({ children }) {
     [sendTransaction, connection]
   );
 
-  // ---------- Connect (smart) ----------
+  // ---------- Smart Connect ----------
   const connect = useCallback(async () => {
     if (connected) return;
-    // If a wallet is already selected, try to connect silently
-    if (wallet) {
-      try {
-        await wallet.adapter.connect();
-        return;                // success – no modal needed
-      } catch {}
+    // If we have a previously saved wallet name, try to select & connect it silently
+    const savedWalletName = localStorage.getItem("coinflow_wallet_name");
+    if (savedWalletName && !wallet) {
+      // Find the adapter among the configured wallets
+      const found = wallets.find(
+        (w) => w.adapter.name === savedWalletName
+      );
+      if (found) {
+        select(found.adapter.name);
+        try {
+          // Small delay for adapter to initialise
+          await new Promise((r) => setTimeout(r, 300));
+          await found.adapter.connect();
+          return;
+        } catch (e) {
+          // silent fail – fall through to modal
+        }
+      }
     }
-    // Fallback: open the selector modal
+    // If still not connected, open the modal
     setVisible(true);
-  }, [connected, wallet, setVisible]);
+  }, [connected, wallet, wallets, select, setVisible]);
 
   // ---------- Disconnect ----------
   const disconnect = useCallback(() => {
@@ -68,7 +84,7 @@ function AppWalletBridge({ children }) {
     localStorage.removeItem("coinflow_wallet_name");
   }, [adapterDisconnect]);
 
-  // ---------- Persist address & wallet name ----------
+  // ---------- Persist wallet info ----------
   useEffect(() => {
     if (walletAddress && wallet) {
       localStorage.setItem("coinflow_wallet", walletAddress);
@@ -79,33 +95,38 @@ function AppWalletBridge({ children }) {
     }
   }, [walletAddress, wallet]);
 
-  // ---------- Reconnect after deep link (mobile fix) ----------
+  // ---------- Deep‑link reconnection ----------
   useEffect(() => {
     const attemptReconnect = async () => {
-      if (document.visibilityState !== "visible" || connected) return;
-
+      if (connected || document.visibilityState !== "visible") return;
       const savedWalletName = localStorage.getItem("coinflow_wallet_name");
       if (!savedWalletName) return;
 
-      // Find the adapter among the registered wallets that is installed
+      // Find the installed adapter
       const installedWallet = wallets.find(
         (w) =>
           w.adapter.name === savedWalletName &&
           w.readyState === "Installed"
       );
+      if (!installedWallet) return;
 
-      if (installedWallet) {
-        try {
-          await installedWallet.adapter.connect();
-        } catch (err) {
-          console.log("Auto‑reconnect failed:", err.message);
-        }
+      // Select it to re‑initialise the adapter
+      select(installedWallet.adapter.name);
+      // Give the adapter a moment
+      await new Promise((r) => setTimeout(r, 500));
+      try {
+        await installedWallet.adapter.connect();
+      } catch (err) {
+        console.log("Auto‑reconnect failed, tap Connect again if needed.");
       }
     };
 
     document.addEventListener("visibilitychange", attemptReconnect);
+    // Also try once when component mounts (page reload after deep link)
+    attemptReconnect();
+
     return () => document.removeEventListener("visibilitychange", attemptReconnect);
-  }, [wallets, connected]);
+  }, [wallets, connected, select]);
 
   // ---------- Context value ----------
   const value = useMemo(
@@ -126,7 +147,6 @@ function AppWalletBridge({ children }) {
   );
 }
 
-// ---------- Wallet list ----------
 const wallets = [
   new PhantomWalletAdapter(),
   new TorusWalletAdapter(),
