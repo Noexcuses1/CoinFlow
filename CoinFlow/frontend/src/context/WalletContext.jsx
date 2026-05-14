@@ -4,8 +4,6 @@ import {
   useMemo,
   useCallback,
   useEffect,
-  useState,
-  useRef,
 } from "react";
 import {
   ConnectionProvider,
@@ -23,6 +21,12 @@ import {
   TorusWalletAdapter,
   LedgerWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
+import {
+  SolanaMobileWalletAdapter,
+  createDefaultAddressSelector,
+  createDefaultAuthorizationResultCache,
+  createDefaultWalletNotFoundHandler,
+} from "@solana-mobile/wallet-adapter-mobile";
 import { clusterApiUrl } from "@solana/web3.js";
 
 // ---------- Custom context ----------
@@ -39,9 +43,6 @@ function AppWalletBridge({ children }) {
   } = useSolanaWallet();
   const { setVisible } = useWalletModal();
 
-  const [mobileConnecting, setMobileConnecting] = useState(false);
-  const timeoutRef = useRef(null);
-
   const walletAddress = useMemo(
     () => (publicKey ? publicKey.toBase58() : null),
     [publicKey]
@@ -54,57 +55,16 @@ function AppWalletBridge({ children }) {
     [sendTransaction, connection]
   );
 
-  // Detect mobile
-  const isMobile = useMemo(
-    () =>
-      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-      window.matchMedia("(display-mode: standalone)").matches,
-    []
-  );
-
-  // ---------- Mobile deep link (Phantom) – CORRECTED ----------
-  const mobileDeepLink = useCallback(() => {
-    const appUrl = window.location.origin;                   // e.g. https://coin-flow-eight.vercel.app
-    const redirectUri = `${appUrl}?wallet_connected=true`;  // return URL
-
-    const connectUrl =
-      `https://phantom.app/ul/v1/connect` +
-      `?app_url=${encodeURIComponent(appUrl)}` +
-      `&redirect_link=${encodeURIComponent(redirectUri)}` +
-      `&cluster=mainnet-beta`;
-
-    localStorage.setItem("coinflow_pending_connect", "true");
-    window.location.href = connectUrl;
-  }, []);
-
-  // ---------- Connect ----------
   const connect = useCallback(() => {
     if (connected) return;
-    if (isMobile) {
-      setMobileConnecting(true);
-
-      // Safety timeout: clear connecting state after 45s
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => {
-        setMobileConnecting(false);
-        localStorage.removeItem("coinflow_pending_connect");
-      }, 45000);
-
-      mobileDeepLink();
-    } else {
-      setVisible(true);
-    }
-  }, [connected, isMobile, mobileDeepLink, setVisible]);
+    setVisible(true);
+  }, [connected, setVisible]);
 
   const disconnect = useCallback(() => {
     adapterDisconnect();
     localStorage.removeItem("coinflow_wallet");
-    localStorage.removeItem("coinflow_pending_connect");
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setMobileConnecting(false);
   }, [adapterDisconnect]);
 
-  // Persist address
   useEffect(() => {
     if (walletAddress) {
       localStorage.setItem("coinflow_wallet", walletAddress);
@@ -113,57 +73,59 @@ function AppWalletBridge({ children }) {
     }
   }, [walletAddress]);
 
-  // ---- Handle return from wallet deep link ----
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const walletConnected = params.get("wallet_connected") === "true";
-    const pending = localStorage.getItem("coinflow_pending_connect") === "true";
-
-    if (walletConnected && pending && isMobile) {
-      localStorage.removeItem("coinflow_pending_connect");
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      setMobileConnecting(false);
-
-      // Give Phantom adapter a moment to detect the injected script
-      setTimeout(() => {
-        if (!connected) {
-          // Fallback: open the wallet modal – Phantom should be detected now
-          setVisible(true);
-        }
-      }, 600);
-    }
-  }, [isMobile, connected, setVisible]);
-
   const value = useMemo(
     () => ({
       walletAddress,
-      connecting: adapterConnecting || mobileConnecting,
+      connecting: adapterConnecting,
       connect,
       disconnect,
       sendTransaction: sendTx,
     }),
-    [
-      walletAddress,
-      adapterConnecting,
-      mobileConnecting,
-      connect,
-      disconnect,
-      sendTx,
-    ]
+    [walletAddress, adapterConnecting, connect, disconnect, sendTx]
   );
 
   return (
-    <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
+    <WalletContext.Provider value={value}>
+      {children}
+    </WalletContext.Provider>
   );
 }
 
+// ---------- Platform detection ----------
+const appUrl =
+  typeof window !== "undefined"
+    ? window.location.origin
+    : "https://coin-flow-eight.vercel.app";
+
+const isAndroid =
+  typeof window !== "undefined" && /Android/i.test(navigator.userAgent);
+
 // ---------- Wallet list ----------
-const wallets = [
-  new PhantomWalletAdapter(),
-  new SolflareWalletAdapter(),
-  new TorusWalletAdapter(),
-  new LedgerWalletAdapter(),
-];
+const wallets = useMemo(() => {
+  if (isAndroid) {
+    // Android: ONLY the Mobile Wallet Adapter (official approach)
+    return [
+      new SolanaMobileWalletAdapter({
+        addressSelector: createDefaultAddressSelector(),
+        appIdentity: {
+          name: "CoinFlow",
+          uri: appUrl,
+          icon: `${appUrl}/IMG_8128.jpg`,
+        },
+        authorizationResultCache: createDefaultAuthorizationResultCache(),
+        cluster: "mainnet-beta",
+        onWalletNotFound: createDefaultWalletNotFoundHandler(),
+      }),
+    ];
+  }
+  // Desktop & iOS: standard wallet adapters
+  return [
+    new PhantomWalletAdapter(),
+    new SolflareWalletAdapter(),
+    new TorusWalletAdapter(),
+    new LedgerWalletAdapter(),
+  ];
+}, [isAndroid, appUrl]);
 
 const endpoint = process.env.QUICKNODE_RPC_URL || clusterApiUrl("mainnet-beta");
 
