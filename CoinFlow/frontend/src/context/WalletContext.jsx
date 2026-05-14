@@ -34,6 +34,7 @@ function AppWalletBridge({ children }) {
     connected,
     disconnect: adapterDisconnect,
     sendTransaction,
+    wallet,
   } = useSolanaWallet();
   const { setVisible } = useWalletModal();
 
@@ -49,11 +50,15 @@ function AppWalletBridge({ children }) {
     [sendTransaction, connection]
   );
 
-  // Simple connect – modal always works, adapters handle the rest
+  // ---------- Connect with logging ----------
   const connect = useCallback(() => {
+    console.log("🔵 Connect button pressed. Already connected?", connected);
     if (connected) return;
+    console.log("🔵 wallet object:", wallet);
+    console.log("🔵 wallet?.adapter:", wallet?.adapter);
+    console.log("🔵 wallet?.readyState:", wallet?.readyState);
     setVisible(true);
-  }, [connected, setVisible]);
+  }, [connected, wallet, setVisible]);
 
   const disconnect = useCallback(() => {
     adapterDisconnect();
@@ -61,12 +66,22 @@ function AppWalletBridge({ children }) {
   }, [adapterDisconnect]);
 
   useEffect(() => {
-    if (walletAddress) {
+    console.log("🟢 connected changed:", connected, "publicKey:", publicKey?.toBase58());
+    if (walletAddress && wallet) {
       localStorage.setItem("coinflow_wallet", walletAddress);
     } else {
       localStorage.removeItem("coinflow_wallet");
     }
-  }, [walletAddress]);
+  }, [walletAddress, wallet, connected, publicKey]);
+
+  // Log when page becomes visible (return from wallet)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      console.log("👁️ visibility changed. State:", document.visibilityState, "connected:", connected);
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [connected]);
 
   const value = useMemo(
     () => ({
@@ -86,8 +101,9 @@ function AppWalletBridge({ children }) {
   );
 }
 
-// ---------- Wallets with mobile redirect config ----------
+// ---------- Wallets with mobile config ----------
 const appUrl = typeof window !== "undefined" ? window.location.origin : "https://coin-flow-eight.vercel.app";
+console.log("🔧 appUrl for mobileConfig:", appUrl);
 
 const phantomAdapter = new PhantomWalletAdapter({
   mobileConfig: {
@@ -97,9 +113,10 @@ const phantomAdapter = new PhantomWalletAdapter({
       icon: `${appUrl}/IMG_8128.jpg`,
     },
     cluster: "mainnet-beta",
-    redirectUri: appUrl,       // ★ this sends you back to CoinFlow
+    redirectUri: appUrl,
   },
 });
+console.log("🔧 Phantom adapter created. mobileConfig:", phantomAdapter.mobileConfig);
 
 const solflareAdapter = new SolflareWalletAdapter({
   mobileConfig: {
@@ -112,6 +129,7 @@ const solflareAdapter = new SolflareWalletAdapter({
     redirectUri: appUrl,
   },
 });
+console.log("🔧 Solflare adapter created. mobileConfig:", solflareAdapter.mobileConfig);
 
 const wallets = [
   phantomAdapter,
