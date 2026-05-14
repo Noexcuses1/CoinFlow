@@ -17,9 +17,11 @@ import {
 } from "@solana/wallet-adapter-react-ui";
 import {
   PhantomWalletAdapter,
+  SolflareWalletAdapter,
   TorusWalletAdapter,
   LedgerWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
+import { BitgetWalletAdapter } from "@bitget-wallet/solana-wallet-adapter";
 import { clusterApiUrl } from "@solana/web3.js";
 
 // ---------- Custom context ----------
@@ -35,8 +37,8 @@ function AppWalletBridge({ children }) {
     sendTransaction,
     wallet,
     wallets,
+    select,
   } = useSolanaWallet();
-
   const { setVisible } = useWalletModal();
 
   const walletAddress = useMemo(
@@ -51,11 +53,34 @@ function AppWalletBridge({ children }) {
     [sendTransaction, connection]
   );
 
-  // Connect → open modal
-  const connect = useCallback(() => {
+  // ---------- Smart Connect (mobile deep‑link aware) ----------
+  const connect = useCallback(async () => {
     if (connected) return;
+
+    // On mobile: force native wallet app via deep‑link
+    const isMobile =
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      window.matchMedia("(display-mode: standalone)").matches;
+
+    if (isMobile) {
+      // Try to open the wallet app directly
+      const adapter = wallet?.adapter || null;
+      if (adapter) {
+        try {
+          await adapter.connect();
+          return;
+        } catch {
+          // fallback to modal
+        }
+      }
+      // If no wallet selected, open modal to let user pick
+      setVisible(true);
+      return;
+    }
+
+    // Desktop: just open modal
     setVisible(true);
-  }, [connected, setVisible]);
+  }, [connected, wallet, setVisible]);
 
   const disconnect = useCallback(() => {
     adapterDisconnect();
@@ -63,7 +88,7 @@ function AppWalletBridge({ children }) {
     localStorage.removeItem("coinflow_wallet_name");
   }, [adapterDisconnect]);
 
-  // Persist address and wallet name
+  // Persist address & wallet name
   useEffect(() => {
     if (walletAddress && wallet) {
       localStorage.setItem("coinflow_wallet", walletAddress);
@@ -74,23 +99,18 @@ function AppWalletBridge({ children }) {
     }
   }, [walletAddress, wallet]);
 
-  // ---- Mobile deep‑link return handler (no extra package needed) ----
+  // ---- Reconnect on page load (for mobile wallet callback) ----
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    // Phantom mobile callback params
-    const phantomKey = params.get("phantom_encryption_public_key");
-    const phantomNonce = params.get("nonce");
-    // Solflare / generic mobile wallet adapter params
-    const solflareAuthToken = params.get("auth_token");
-    const solflareCluster = params.get("cluster");
-
     const isCallback =
-      (phantomKey && phantomNonce) || solflareAuthToken;
+      params.has("phantom_encryption_public_key") ||
+      params.has("auth_token") ||
+      params.has("wallet_redirect");
 
     if (!isCallback || connected) return;
 
-    // Try to reconnect using the selected wallet (or any installed wallet)
-    const attemptReconnect = async () => {
+    // Give wallet adapters a moment to detect injected scripts
+    const timer = setTimeout(async () => {
       const savedName = localStorage.getItem("coinflow_wallet_name");
       const candidate = wallets.find(
         (w) =>
@@ -101,15 +121,15 @@ function AppWalletBridge({ children }) {
         try {
           await candidate.adapter.connect();
         } catch (err) {
-          console.log("Reconnect from callback failed:", err.message);
+          console.log("Callback reconnect failed:", err.message);
         }
       }
-    };
+    }, 500);
 
-    attemptReconnect();
+    return () => clearTimeout(timer);
   }, [wallets, connected]);
 
-  // Visibility change reconnection (fallback for when user returns manually)
+  // ---- Reconnect when app becomes visible again (mobile return) ----
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (document.visibilityState !== "visible" || connected) return;
@@ -151,9 +171,11 @@ function AppWalletBridge({ children }) {
   );
 }
 
-// ---------- Wallet list ----------
+// ---------- All supported wallets ----------
 const wallets = [
   new PhantomWalletAdapter(),
+  new SolflareWalletAdapter(),
+  new BitgetWalletAdapter(),
   new TorusWalletAdapter(),
   new LedgerWalletAdapter(),
 ];
