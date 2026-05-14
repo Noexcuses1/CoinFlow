@@ -66,7 +66,9 @@ function AppWalletBridge({ children }) {
     const redirectUri = encodeURIComponent(`${appUrl}?wallet_connected=true`);
     localStorage.setItem("coinflow_pending_connect", "true");
     // Phantom universal link (opens app or fallback to store)
-    window.location.href = `https://phantom.app/ul/v1/connect?app_url=${redirectUri}&dapp=${encodeURIComponent(appUrl)}`;
+    window.location.href = `https://phantom.app/ul/v1/connect?app_url=${redirectUri}&dapp=${encodeURIComponent(
+      appUrl
+    )}`;
   }, []);
 
   // ---------- Connect ----------
@@ -123,13 +125,18 @@ function AppWalletBridge({ children }) {
       disconnect,
       sendTransaction: sendTx,
     }),
-    [walletAddress, adapterConnecting, mobileConnecting, connect, disconnect, sendTx]
+    [
+      walletAddress,
+      adapterConnecting,
+      mobileConnecting,
+      connect,
+      disconnect,
+      sendTx,
+    ]
   );
 
   return (
-    <WalletContext.Provider value={value}>
-      {children}
-    </WalletContext.Provider>
+    <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
   );
 }
 
