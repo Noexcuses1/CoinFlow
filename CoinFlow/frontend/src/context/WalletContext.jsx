@@ -44,19 +44,17 @@ function AppWalletBridge({ children }) {
     },
     [sendTransaction, connection]
   );
-  // Connect → open wallet selector modal
-  const connect = useCallback(() => {
-    // If already connected, do nothing
+  // Connect → try silent reconnect first, then open modal
+  const connect = useCallback(async () => {
     if (connected) return;
-    // If no wallet selected yet, open the modal for user to pick
-    if (!wallet) {
-      setVisible(true);
-      return;
+    if (wallet) {
+      // Already selected – try to connect directly (fixes mobile return)
+      try {
+        await wallet.adapter.connect();
+        return;                     // success – modal not needed
+      } catch {}
     }
-    // If a wallet is already selected but not connected, the modal will handle it
-    setVisible(true);
-    // Alternatively, we could call wallet.adapter.connect() directly,
-    // but the modal provides the consistent UI.
+    setVisible(true);              // fallback: open the modal
   }, [connected, wallet, setVisible]);
 
   const disconnect = useCallback(() => {
@@ -72,6 +70,21 @@ function AppWalletBridge({ children }) {
       localStorage.removeItem("coinflow_wallet");
     }
   }, [walletAddress]);
+    // Reconnect when the user comes back from the wallet app (mobile deep link fix)
+    useEffect(() => {
+      const handleVisibilityChange = async () => {
+        if (document.visibilityState === 'visible' && wallet && !connected) {
+          try {
+            await wallet.adapter.connect();
+          } catch (err) {
+            console.log('Auto‑reconnect failed – user may need to tap Connect again.', err.message);
+          }
+        }
+      };
+  
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [wallet, connected]);
 
   const value = useMemo(
     () => ({
