@@ -60,12 +60,11 @@ function AppWalletBridge({ children }) {
     []
   );
 
-  // Save deep‑link info before leaving page
+  // ---------- Mobile deep link (Phantom) ----------
   const mobileDeepLink = useCallback(() => {
     const appUrl = window.location.origin;
     const redirectUri = encodeURIComponent(`${appUrl}?wallet_connected=true`);
     localStorage.setItem("coinflow_pending_connect", "true");
-    // Phantom universal link (opens app or fallback to store)
     window.location.href = `https://phantom.app/ul/v1/connect?app_url=${redirectUri}&dapp=${encodeURIComponent(
       appUrl
     )}`;
@@ -97,23 +96,24 @@ function AppWalletBridge({ children }) {
     }
   }, [walletAddress]);
 
-  // ---- Handle return from mobile wallet ----
+  // ---- Handle return from wallet deep link ----
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const isConnected = params.get("wallet_connected") === "true";
+    const walletConnected = params.get("wallet_connected") === "true";
     const pending = localStorage.getItem("coinflow_pending_connect") === "true";
 
-    if (isConnected && pending && isMobile && !connected) {
-      // The wallet redirected back — now try to connect via the adapter
+    if (walletConnected && pending && isMobile && !connected) {
       localStorage.removeItem("coinflow_pending_connect");
       setMobileConnecting(false);
-      // Give the wallet adapter a moment to detect the injected script
+
+      // Phantom has returned – now try to connect via the adapter
       setTimeout(() => {
+        // The adapter may auto‑detect Phantom now
+        // If not, we'll open the modal as a fallback
         if (!connected) {
-          // Fallback: ask user to approve again via the modal
           setVisible(true);
         }
-      }, 500);
+      }, 600);
     }
   }, [isMobile, connected, setVisible]);
 
@@ -140,7 +140,7 @@ function AppWalletBridge({ children }) {
   );
 }
 
-// ---------- Wallet list (desktop only) ----------
+// ---------- Wallet list ----------
 const wallets = [
   new PhantomWalletAdapter(),
   new SolflareWalletAdapter(),
