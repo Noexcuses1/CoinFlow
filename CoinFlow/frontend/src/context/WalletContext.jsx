@@ -35,6 +35,7 @@ function AppWalletBridge({ children }) {
     disconnect: adapterDisconnect,
     sendTransaction,
     wallet,
+    wallets,
   } = useSolanaWallet();
   const { setVisible } = useWalletModal();
 
@@ -50,15 +51,10 @@ function AppWalletBridge({ children }) {
     [sendTransaction, connection]
   );
 
-  // ---------- Connect with logging ----------
   const connect = useCallback(() => {
-    console.log("🔵 Connect button pressed. Already connected?", connected);
     if (connected) return;
-    console.log("🔵 wallet object:", wallet);
-    console.log("🔵 wallet?.adapter:", wallet?.adapter);
-    console.log("🔵 wallet?.readyState:", wallet?.readyState);
     setVisible(true);
-  }, [connected, wallet, setVisible]);
+  }, [connected, setVisible]);
 
   const disconnect = useCallback(() => {
     adapterDisconnect();
@@ -66,22 +62,35 @@ function AppWalletBridge({ children }) {
   }, [adapterDisconnect]);
 
   useEffect(() => {
-    console.log("🟢 connected changed:", connected, "publicKey:", publicKey?.toBase58());
-    if (walletAddress && wallet) {
+    if (walletAddress) {
       localStorage.setItem("coinflow_wallet", walletAddress);
     } else {
       localStorage.removeItem("coinflow_wallet");
     }
-  }, [walletAddress, wallet, connected, publicKey]);
+  }, [walletAddress]);
 
-  // Log when page becomes visible (return from wallet)
+  // ---- Reconnect when returning from wallet app (deep link) ----
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      console.log("👁️ visibility changed. State:", document.visibilityState, "connected:", connected);
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [connected]);
+    if (connected) return;
+    const isMobile =
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      window.matchMedia("(display-mode: standalone)").matches;
+
+    if (!isMobile) return;
+
+    // Wait a moment for wallet scripts to inject
+    const timer = setTimeout(() => {
+      const installed = wallets.find(
+        (w) => w.readyState === "Installed"
+      );
+      if (installed) {
+        try {
+          installed.adapter.connect().catch(() => {});
+        } catch {}
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [wallets, connected]);
 
   const value = useMemo(
     () => ({
@@ -101,9 +110,11 @@ function AppWalletBridge({ children }) {
   );
 }
 
-// ---------- Wallets with mobile config ----------
-const appUrl = typeof window !== "undefined" ? window.location.origin : "https://coin-flow-eight.vercel.app";
-console.log("🔧 appUrl for mobileConfig:", appUrl);
+// ---------- Wallet adapters with mobile deep‑link config ----------
+const appUrl =
+  typeof window !== "undefined"
+    ? window.location.origin
+    : "https://coin-flow-eight.vercel.app";
 
 const phantomAdapter = new PhantomWalletAdapter({
   mobileConfig: {
@@ -116,7 +127,6 @@ const phantomAdapter = new PhantomWalletAdapter({
     redirectUri: appUrl,
   },
 });
-console.log("🔧 Phantom adapter created. mobileConfig:", phantomAdapter.mobileConfig);
 
 const solflareAdapter = new SolflareWalletAdapter({
   mobileConfig: {
@@ -129,7 +139,6 @@ const solflareAdapter = new SolflareWalletAdapter({
     redirectUri: appUrl,
   },
 });
-console.log("🔧 Solflare adapter created. mobileConfig:", solflareAdapter.mobileConfig);
 
 const wallets = [
   phantomAdapter,

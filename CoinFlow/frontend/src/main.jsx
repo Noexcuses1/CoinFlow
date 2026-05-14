@@ -1,16 +1,4 @@
 import React from 'react';
-// ---- lightweight on‑screen logger ----
-(function () {
-  const el = document.getElementById('debug-console');
-  if (!el) return;
-  el.style.display = 'block';
-  const oldLog = console.log;
-  console.log = function (...args) {
-    oldLog(...args);
-    el.textContent += args.join(' ') + '\n';
-    el.scrollTop = el.scrollHeight;
-  };
-})();
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
