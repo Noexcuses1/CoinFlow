@@ -4,6 +4,7 @@ import {
   useMemo,
   useCallback,
   useEffect,
+  useRef,
 } from "react";
 import {
   ConnectionProvider,
@@ -15,12 +16,13 @@ import {
   WalletModalProvider,
   useWalletModal,
 } from "@solana/wallet-adapter-react-ui";
+import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import {
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-  TorusWalletAdapter,
-  LedgerWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
+  SolanaMobileWalletAdapter,
+  createDefaultAddressSelector,
+  createDefaultAuthorizationResultCache,
+  createDefaultWalletNotFoundHandler,
+} from "@solana-mobile/wallet-adapter-mobile";
 import { clusterApiUrl } from "@solana/web3.js";
 
 // ---------- Custom context ----------
@@ -34,8 +36,8 @@ function AppWalletBridge({ children }) {
     connected,
     disconnect: adapterDisconnect,
     sendTransaction,
+    connect: adapterConnect,
     wallet,
-    wallets,
   } = useSolanaWallet();
   const { setVisible } = useWalletModal();
 
@@ -51,6 +53,15 @@ function AppWalletBridge({ children }) {
     [sendTransaction, connection]
   );
 
+  // Detect mobile
+  const isMobile = useMemo(
+    () =>
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      window.matchMedia("(display-mode: standalone)").matches,
+    []
+  );
+
+  // ---------- Connect ----------
   const connect = useCallback(() => {
     if (connected) return;
     setVisible(true);
@@ -61,6 +72,7 @@ function AppWalletBridge({ children }) {
     localStorage.removeItem("coinflow_wallet");
   }, [adapterDisconnect]);
 
+  // Persist address
   useEffect(() => {
     if (walletAddress) {
       localStorage.setItem("coinflow_wallet", walletAddress);
@@ -69,28 +81,26 @@ function AppWalletBridge({ children }) {
     }
   }, [walletAddress]);
 
-  // ---- Reconnect when returning from wallet app (deep link) ----
+  // ---- Reconnect when returning from wallet app ----
+  const initialLoad = useRef(true);
   useEffect(() => {
-    if (connected) return;
-    const isMobile =
-      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-      window.matchMedia("(display-mode: standalone)").matches;
+    if (!isMobile || !initialLoad.current) return;
+    initialLoad.current = false;
 
-    if (!isMobile) return;
+    // Check if we came back from a wallet redirect
+    const params = new URLSearchParams(window.location.search);
+    const isCallback =
+      params.has("phantom_encryption_public_key") ||
+      params.has("auth_token") ||
+      params.has("wallet_redirect");
 
-    // Wait a moment for wallet scripts to inject
-    const timer = setTimeout(() => {
-      const installed = wallets.find(
-        (w) => w.readyState === "Installed"
-      );
-      if (installed) {
-        try {
-          installed.adapter.connect().catch(() => {});
-        } catch {}
-      }
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [wallets, connected]);
+    if (isCallback && !connected) {
+      const timer = setTimeout(() => {
+        adapterConnect().catch(() => {});
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile, connected, adapterConnect]);
 
   const value = useMemo(
     () => ({
@@ -110,42 +120,25 @@ function AppWalletBridge({ children }) {
   );
 }
 
-// ---------- Wallet adapters with mobile deep‑link config ----------
+// ---------- Wallet list ----------
 const appUrl =
   typeof window !== "undefined"
     ? window.location.origin
     : "https://coin-flow-eight.vercel.app";
 
-const phantomAdapter = new PhantomWalletAdapter({
-  mobileConfig: {
-    appIdentity: {
-      name: "CoinFlow",
-      uri: appUrl,
-      icon: `${appUrl}/IMG_8128.jpg`,
-    },
-    cluster: "mainnet-beta",
-    redirectUri: appUrl,
+const mobileWalletAdapter = new SolanaMobileWalletAdapter({
+  addressSelector: createDefaultAddressSelector(),
+  appIdentity: {
+    name: "CoinFlow",
+    uri: appUrl,
+    icon: `${appUrl}/IMG_8128.jpg`,
   },
+  authorizationResultCache: createDefaultAuthorizationResultCache(),
+  cluster: "mainnet-beta",
+  onWalletNotFound: createDefaultWalletNotFoundHandler(),
 });
 
-const solflareAdapter = new SolflareWalletAdapter({
-  mobileConfig: {
-    appIdentity: {
-      name: "CoinFlow",
-      uri: appUrl,
-      icon: `${appUrl}/IMG_8128.jpg`,
-    },
-    cluster: "mainnet-beta",
-    redirectUri: appUrl,
-  },
-});
-
-const wallets = [
-  phantomAdapter,
-  solflareAdapter,
-  new TorusWalletAdapter(),
-  new LedgerWalletAdapter(),
-];
+const wallets = [mobileWalletAdapter, new PhantomWalletAdapter()];
 
 const endpoint = process.env.QUICKNODE_RPC_URL || clusterApiUrl("mainnet-beta");
 
