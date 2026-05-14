@@ -2,7 +2,7 @@
     "name": "CoinFlow",
     "short_name": "CoinFlow",
     "description": "Real‑time Solana Trading Terminal",
-    "start_url": "/",
+    "start_url": "/?v=2",
     "display": "standalone",
     "background_color": "#070B11",
     "theme_color": "#00FFA3",

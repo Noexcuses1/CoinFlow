@@ -1,21 +1,30 @@
-const CACHE_NAME = 'coinflow-v1';
+const CACHE_NAME = 'coinflow-v2';   // ★ bump version each deployment
 
+// Install – cache nothing (we want network-first)
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll([
-        '/',
-        '/index.html',
-        '/manifest.json',
-        '/IMG_8128.jpg'
-      ]);
-    })
-  );
+  self.skipWaiting();          // activate immediately
 });
 
+// Activate – wipe old caches
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
+  );
+  self.clients.claim();       // take control of all pages
+});
+
+// Fetch – network-first, fallback to cache only if offline
 self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('/api/')) return;
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        // Cache fresh responses for offline
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(event.request))   // offline fallback
   );
 });

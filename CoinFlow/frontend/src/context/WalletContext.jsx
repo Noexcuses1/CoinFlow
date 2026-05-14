@@ -15,7 +15,12 @@ import {
   WalletModalProvider,
   useWalletModal,
 } from "@solana/wallet-adapter-react-ui";
-import { PhantomWalletAdapter, TorusWalletAdapter, LedgerWalletAdapter } from "@solana/wallet-adapter-wallets";
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+  TorusWalletAdapter,
+  LedgerWalletAdapter,
+} from "@solana/wallet-adapter-wallets";
 import { clusterApiUrl } from "@solana/web3.js";
 
 // ---------- Our custom context (same API as before) ----------
@@ -94,6 +99,7 @@ function AppWalletBridge({ children }) {
 // ---------- Wallet list ----------
 const wallets = [
   new PhantomWalletAdapter(),
+  new SolflareWalletAdapter(),
   new TorusWalletAdapter(),
   new LedgerWalletAdapter(),
 ];
