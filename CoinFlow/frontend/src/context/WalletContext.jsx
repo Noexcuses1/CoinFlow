@@ -9,27 +9,16 @@ import {
   ConnectionProvider,
   WalletProvider as SolanaWalletProvider,
   useWallet as useSolanaWallet,
-  useConnection,
+useConnection,
 } from "@solana/wallet-adapter-react";
 import {
   WalletModalProvider,
   useWalletModal,
 } from "@solana/wallet-adapter-react-ui";
-import {
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-  TorusWalletAdapter,
-  LedgerWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
-import {
-  SolanaMobileWalletAdapter,
-  createDefaultAddressSelector,
-  createDefaultAuthorizationResultCache,
-  createDefaultWalletNotFoundHandler,
-} from "@solana-mobile/wallet-adapter-mobile";
+import { PhantomWalletAdapter, TorusWalletAdapter, LedgerWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { clusterApiUrl } from "@solana/web3.js";
 
-// ---------- Custom context ----------
+// ---------- Our custom context (same API as before) ----------
 const WalletContext = createContext(null);
 
 function AppWalletBridge({ children }) {
@@ -40,31 +29,42 @@ function AppWalletBridge({ children }) {
     connected,
     disconnect: adapterDisconnect,
     sendTransaction,
+    wallet,
   } = useSolanaWallet();
-  const { setVisible } = useWalletModal();
+
+  const { setVisible } = useWalletModal();    // <-- this opens the modal
 
   const walletAddress = useMemo(
     () => (publicKey ? publicKey.toBase58() : null),
     [publicKey]
   );
-
   const sendTx = useCallback(
     async (transaction) => {
       return await sendTransaction(transaction, connection);
     },
     [sendTransaction, connection]
   );
-
+  // Connect → open wallet selector modal
   const connect = useCallback(() => {
+    // If already connected, do nothing
     if (connected) return;
+    // If no wallet selected yet, open the modal for user to pick
+    if (!wallet) {
+      setVisible(true);
+      return;
+    }
+    // If a wallet is already selected but not connected, the modal will handle it
     setVisible(true);
-  }, [connected, setVisible]);
+    // Alternatively, we could call wallet.adapter.connect() directly,
+    // but the modal provides the consistent UI.
+  }, [connected, wallet, setVisible]);
 
   const disconnect = useCallback(() => {
     adapterDisconnect();
     localStorage.removeItem("coinflow_wallet");
   }, [adapterDisconnect]);
 
+  // Persist address for auto‑reconnect hint
   useEffect(() => {
     if (walletAddress) {
       localStorage.setItem("coinflow_wallet", walletAddress);
@@ -91,44 +91,17 @@ function AppWalletBridge({ children }) {
   );
 }
 
-// ---------- Platform detection ----------
-const appUrl =
-  typeof window !== "undefined"
-    ? window.location.origin
-    : "https://coin-flow-eight.vercel.app";
-
-const isAndroid =
-  typeof window !== "undefined" && /Android/i.test(navigator.userAgent);
-
 // ---------- Wallet list ----------
-const wallets = useMemo(() => {
-  if (isAndroid) {
-    // Android: ONLY the Mobile Wallet Adapter (official approach)
-    return [
-      new SolanaMobileWalletAdapter({
-        addressSelector: createDefaultAddressSelector(),
-        appIdentity: {
-          name: "CoinFlow",
-          uri: appUrl,
-          icon: `${appUrl}/IMG_8128.jpg`,
-        },
-        authorizationResultCache: createDefaultAuthorizationResultCache(),
-        cluster: "mainnet-beta",
-        onWalletNotFound: createDefaultWalletNotFoundHandler(),
-      }),
-    ];
-  }
-  // Desktop & iOS: standard wallet adapters
-  return [
-    new PhantomWalletAdapter(),
-    new SolflareWalletAdapter(),
-    new TorusWalletAdapter(),
-    new LedgerWalletAdapter(),
-  ];
-}, [isAndroid, appUrl]);
+const wallets = [
+  new PhantomWalletAdapter(),
+  new TorusWalletAdapter(),
+  new LedgerWalletAdapter(),
+];
 
-const endpoint = process.env.QUICKNODE_RPC_URL || clusterApiUrl("mainnet-beta");
+// Use mainnet-beta – replace with your RPC if needed
+const endpoint = clusterApiUrl("mainnet-beta");
 
+// ---------- Top‑level provider ----------
 export function WalletProvider({ children }) {
   return (
     <ConnectionProvider endpoint={endpoint}>
