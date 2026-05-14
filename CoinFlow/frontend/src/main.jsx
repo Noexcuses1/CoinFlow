@@ -7,6 +7,10 @@ import './styles/variables.css';
 import './styles/global.css';
 import "@solana/wallet-adapter-react-ui/styles.css";
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
