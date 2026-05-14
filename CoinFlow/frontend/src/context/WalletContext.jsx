@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useState,
+  useRef,
 } from "react";
 import {
   ConnectionProvider,
@@ -39,6 +40,7 @@ function AppWalletBridge({ children }) {
   const { setVisible } = useWalletModal();
 
   const [mobileConnecting, setMobileConnecting] = useState(false);
+  const timeoutRef = useRef(null);
 
   const walletAddress = useMemo(
     () => (publicKey ? publicKey.toBase58() : null),
@@ -60,14 +62,19 @@ function AppWalletBridge({ children }) {
     []
   );
 
-  // ---------- Mobile deep link (Phantom) ----------
+  // ---------- Mobile deep link (Phantom) – CORRECTED ----------
   const mobileDeepLink = useCallback(() => {
-    const appUrl = window.location.origin;
-    const redirectUri = encodeURIComponent(`${appUrl}?wallet_connected=true`);
+    const appUrl = window.location.origin;                   // e.g. https://coin-flow-eight.vercel.app
+    const redirectUri = `${appUrl}?wallet_connected=true`;  // return URL
+
+    const connectUrl =
+      `https://phantom.app/ul/v1/connect` +
+      `?app_url=${encodeURIComponent(appUrl)}` +
+      `&redirect_link=${encodeURIComponent(redirectUri)}` +
+      `&cluster=mainnet-beta`;
+
     localStorage.setItem("coinflow_pending_connect", "true");
-    window.location.href = `https://phantom.app/ul/v1/connect?app_url=${redirectUri}&dapp=${encodeURIComponent(
-      appUrl
-    )}`;
+    window.location.href = connectUrl;
   }, []);
 
   // ---------- Connect ----------
@@ -75,6 +82,14 @@ function AppWalletBridge({ children }) {
     if (connected) return;
     if (isMobile) {
       setMobileConnecting(true);
+
+      // Safety timeout: clear connecting state after 45s
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        setMobileConnecting(false);
+        localStorage.removeItem("coinflow_pending_connect");
+      }, 45000);
+
       mobileDeepLink();
     } else {
       setVisible(true);
@@ -85,6 +100,8 @@ function AppWalletBridge({ children }) {
     adapterDisconnect();
     localStorage.removeItem("coinflow_wallet");
     localStorage.removeItem("coinflow_pending_connect");
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setMobileConnecting(false);
   }, [adapterDisconnect]);
 
   // Persist address
@@ -102,15 +119,15 @@ function AppWalletBridge({ children }) {
     const walletConnected = params.get("wallet_connected") === "true";
     const pending = localStorage.getItem("coinflow_pending_connect") === "true";
 
-    if (walletConnected && pending && isMobile && !connected) {
+    if (walletConnected && pending && isMobile) {
       localStorage.removeItem("coinflow_pending_connect");
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       setMobileConnecting(false);
 
-      // Phantom has returned – now try to connect via the adapter
+      // Give Phantom adapter a moment to detect the injected script
       setTimeout(() => {
-        // The adapter may auto‑detect Phantom now
-        // If not, we'll open the modal as a fallback
         if (!connected) {
+          // Fallback: open the wallet modal – Phantom should be detected now
           setVisible(true);
         }
       }, 600);
