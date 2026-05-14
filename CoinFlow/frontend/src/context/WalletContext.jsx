@@ -21,7 +21,6 @@ import {
   TorusWalletAdapter,
   LedgerWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
-import { BitgetWalletAdapter } from "@bitget-wallet/solana-wallet-adapter";
 import { clusterApiUrl } from "@solana/web3.js";
 
 // ---------- Custom context ----------
@@ -175,7 +174,6 @@ function AppWalletBridge({ children }) {
 const wallets = [
   new PhantomWalletAdapter(),
   new SolflareWalletAdapter(),
-  new BitgetWalletAdapter(),
   new TorusWalletAdapter(),
   new LedgerWalletAdapter(),
 ];
