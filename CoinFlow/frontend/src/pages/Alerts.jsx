@@ -57,7 +57,7 @@ export default function Alerts() {
         )}
 
         {alerts.map((alert, i) => (
-          <AlertCard key={alert.tx_hash || i} alert={alert} navigate={navigate} />
+          <AlertCard key={tokenAddress || i} alert={alert} navigate={navigate} />
         ))}
       </div>
     </div>
@@ -68,8 +68,8 @@ function AlertCard({ alert, navigate }) {
   const [copied, setCopied] = useState(false);
 
   const copyAddress = async () => {
-    if (alert.tx_hash) {
-      await navigator.clipboard.writeText(alert.tx_hash);
+    if (tokenAddress) {
+      await navigator.clipboard.writeText(tokenAddress);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     }
