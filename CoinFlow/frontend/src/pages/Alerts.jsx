@@ -57,7 +57,7 @@ export default function Alerts() {
         )}
 
         {alerts.map((alert, i) => (
-          <AlertCard key={tokenAddress || i} alert={alert} navigate={navigate} />
+          <AlertCard key={alert.tx_hash || i} alert={alert} navigate={navigate} />
         ))}
       </div>
     </div>
@@ -68,7 +68,7 @@ function AlertCard({ alert, navigate }) {
   const [copied, setCopied] = useState(false);
 
   const copyAddress = async () => {
-    const mint = alert.address || alert.token;   // real token mint address
+    const mint = alert.address || alert.token;
     if (mint) {
       await navigator.clipboard.writeText(mint);
       setCopied(true);
@@ -95,10 +95,8 @@ function AlertCard({ alert, navigate }) {
           <button onClick={copyAddress} className={styles.copyBtn}>
             {copied ? <FiCheck size={14} /> : <FiCopy size={14} />}
           </button>
-          <span
-            className={`${styles.badge} ${alert.type === "buy" ? styles.buy : styles.sell}`}
-          >
-            {alert.type === "buy" ? <FiArrowUp /> : <FiArrowDown />}
+          <span className={`${styles.badge} ${alert.type === 'buy' ? styles.buy : styles.sell}`}>
+            {alert.type === 'buy' ? <FiArrowUp /> : <FiArrowDown />}
             {alert.type.toUpperCase()}
           </span>
         </div>
@@ -112,20 +110,11 @@ function AlertCard({ alert, navigate }) {
           {new Date(alert.created_at).toLocaleTimeString()}
         </span>
         {alert.profit_percent && (
-          <span
-            className={`${styles.profit} ${
-              alert.profit_percent >= 0 ? styles.positive : styles.negative
-            }`}
-          >
-            {alert.profit_percent > 0 ? "+" : ""}
-            {alert.profit_percent}%
+          <span className={`${styles.profit} ${alert.profit_percent >= 0 ? styles.positive : styles.negative}`}>
+            {alert.profit_percent > 0 ? '+' : ''}{alert.profit_percent}%
           </span>
         )}
-        <button
-          onClick={handleBuy}
-          className={styles.buyBtn}
-          title="Swap SOL to this token"
-        >
+        <button onClick={handleBuy} className={styles.buyBtn} title="Swap SOL to this token">
           <FiShoppingCart size={14} /> Buy
         </button>
       </div>
