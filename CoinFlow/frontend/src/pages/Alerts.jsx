@@ -68,16 +68,16 @@ function AlertCard({ alert, navigate }) {
   const [copied, setCopied] = useState(false);
 
   const copyAddress = async () => {
-    if (tokenAddress) {
-      await navigator.clipboard.writeText(tokenAddress);
+    const mint = alert.address || alert.token;   // real token mint address
+    if (mint) {
+      await navigator.clipboard.writeText(mint);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     }
   };
 
   const handleBuy = () => {
-    // Use mint address, not symbol
-    const tokenAddress = alert.address || alert.token;  // fallback
+    const tokenAddress = alert.address || alert.token;
     navigate(`/trade?token=${tokenAddress}&side=buy`);
   };
 
@@ -88,15 +88,17 @@ function AlertCard({ alert, navigate }) {
           <span
             className={styles.tokenSymbol}
             onClick={copyAddress}
-            title="Click to copy TX hash"
+            title="Click to copy token mint address"
           >
             {alert.token}
           </span>
           <button onClick={copyAddress} className={styles.copyBtn}>
             {copied ? <FiCheck size={14} /> : <FiCopy size={14} />}
           </button>
-          <span className={`${styles.badge} ${alert.type === 'buy' ? styles.buy : styles.sell}`}>
-            {alert.type === 'buy' ? <FiArrowUp /> : <FiArrowDown />}
+          <span
+            className={`${styles.badge} ${alert.type === "buy" ? styles.buy : styles.sell}`}
+          >
+            {alert.type === "buy" ? <FiArrowUp /> : <FiArrowDown />}
             {alert.type.toUpperCase()}
           </span>
         </div>
@@ -110,12 +112,21 @@ function AlertCard({ alert, navigate }) {
           {new Date(alert.created_at).toLocaleTimeString()}
         </span>
         {alert.profit_percent && (
-          <span className={`${styles.profit} ${alert.profit_percent >= 0 ? styles.positive : styles.negative}`}>
-            {alert.profit_percent > 0 ? '+' : ''}{alert.profit_percent}%
+          <span
+            className={`${styles.profit} ${
+              alert.profit_percent >= 0 ? styles.positive : styles.negative
+            }`}
+          >
+            {alert.profit_percent > 0 ? "+" : ""}
+            {alert.profit_percent}%
           </span>
         )}
-        <button onClick={handleBuy} className={styles.buyBtn} title="Swap SOL to this token">
-          Buy
+        <button
+          onClick={handleBuy}
+          className={styles.buyBtn}
+          title="Swap SOL to this token"
+        >
+          <FiShoppingCart size={14} /> Buy
         </button>
       </div>
     </div>
