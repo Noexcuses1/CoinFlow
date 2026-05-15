@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiActivity, FiArrowUp, FiArrowDown, FiCopy, FiCheck, FiShoppingCart } from 'react-icons/fi';
+import { FiActivity, FiArrowUp, FiArrowDown, FiCopy, FiCheck,  } from 'react-icons/fi';
 import styles from './Alerts.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -115,7 +115,7 @@ function AlertCard({ alert, navigate }) {
           </span>
         )}
         <button onClick={handleBuy} className={styles.buyBtn} title="Swap SOL to this token">
-          <FiShoppingCart size={14} /> Buy
+           Buy
         </button>
       </div>
     </div>
