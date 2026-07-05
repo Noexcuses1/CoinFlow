@@ -10,7 +10,6 @@ export default function Navbar() {
     disconnect,
     walletMessage,
     mobileHelperOpen,
-    openPhantomBrowser,
     copyCoinFlowUrl,
     retryConnect,
   } = useWallet();
@@ -47,7 +46,6 @@ export default function Navbar() {
               <div className={styles.walletHelper}>
                 <p>{walletMessage || 'Mobile wallet detected. To connect, open CoinFlow inside Phantom Browser.'}</p>
                 <div className={styles.walletHelperActions}>
-                  <button type="button" onClick={openPhantomBrowser}>Open in Phantom App</button>
                   <button type="button" onClick={copyCoinFlowUrl}>Copy CoinFlow URL</button>
                   <button type="button" onClick={retryConnect}>Retry Connect</button>
                 </div>
