@@ -24,13 +24,6 @@ import {
   LedgerWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import { clusterApiUrl } from "@solana/web3.js";
-import MobileWalletModal from "../components/WalletConnect/MobileWalletModal";
-import {
-  getWalletDeepLink,
-  getWalletInstallUrl,
-  isMobileBrowser,
-  mobileDebugLog,
-} from "../utils/walletDeepLinks";
 
 // ---------- Our custom context (same API as before) ----------
 const WalletContext = createContext(null);
@@ -42,6 +35,7 @@ function AppWalletBridge({ children }) {
     connecting: adapterConnecting,
     connected,
     disconnect: adapterDisconnect,
+    connect: adapterConnect,
     sendTransaction,
     wallet,
     wallets: availableWallets,
@@ -49,8 +43,9 @@ function AppWalletBridge({ children }) {
   } = useSolanaWallet();
 
   const { setVisible } = useWalletModal();    // <-- this opens the modal
-  const [mobileModalOpen, setMobileModalOpen] = useState(false);
-  const [mobileMessage, setMobileMessage] = useState("");
+  const [walletError, setWalletError] = useState("");
+  const [walletAction, setWalletAction] = useState(null);
+  const [connectRequested, setConnectRequested] = useState(false);
   const reconnectingRef = useRef(false);
 
   const walletAddress = useMemo(
@@ -65,17 +60,77 @@ function AppWalletBridge({ children }) {
   );
   const connect = useCallback(() => {
     if (connected) return;
-
-    if (isMobileBrowser()) {
-      setMobileMessage(
-        "After approving in your wallet, return to this browser tab and CoinFlow will reconnect automatically."
-      );
-      setMobileModalOpen(true);
-      return;
-    }
-
+    setWalletError("");
+    setWalletAction(null);
+    setConnectRequested(true);
+    sessionStorage.setItem("coinflow_wallet_connect_pending", "1");
     setVisible(true);
   }, [connected, setVisible]);
+
+  useEffect(() => {
+    if (!connectRequested || !wallet || connected || adapterConnecting) return;
+
+    let cancelled = false;
+    async function connectSelectedWallet() {
+      const walletName = wallet.adapter.name;
+      const isPhantom = walletName.toLowerCase().includes("phantom");
+      const phantomProvider = window.solana?.isPhantom ? window.solana : null;
+
+      try {
+        walletDebugLog(`${walletName} selected`);
+        localStorage.setItem("coinflow_selected_wallet", walletName);
+
+        if (isPhantom && isMobileBrowser() && !phantomProvider) {
+          walletDebugLog("Mobile provider missing");
+          setWalletError("Open CoinFlow inside Phantom browser to connect on mobile. If it does not connect, open Phantom → Browser → paste CoinFlow URL.");
+          setWalletAction({
+            label: "Open CoinFlow in Phantom Browser",
+            href: getPhantomBrowserUrl(),
+            onClick: () => walletDebugLog("Opening Phantom browser/deeplink"),
+          });
+          setConnectRequested(false);
+          return;
+        }
+
+        if (isPhantom && !isMobileBrowser() && !phantomProvider) {
+          walletDebugLog("Provider missing");
+          setWalletError("Phantom extension not found. Install Phantom or open CoinFlow in a browser with Phantom enabled.");
+          setWalletAction({
+            label: "Install Phantom",
+            href: "https://phantom.app/download",
+          });
+          setConnectRequested(false);
+          return;
+        }
+
+        if (isPhantom && phantomProvider) {
+          walletDebugLog(isMobileBrowser() ? "Provider found" : "Desktop provider found");
+          await phantomProvider.connect();
+        }
+
+        walletDebugLog("Connecting wallet", walletName);
+        await adapterConnect();
+        if (!cancelled) {
+          walletDebugLog("Connected wallet");
+          setWalletError("");
+          setWalletAction(null);
+          setConnectRequested(false);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message = normalizeWalletError(error);
+          walletDebugLog("Wallet connect failed", message);
+          setWalletError(message);
+          setConnectRequested(false);
+        }
+      }
+    }
+
+    connectSelectedWallet();
+    return () => {
+      cancelled = true;
+    };
+  }, [adapterConnect, adapterConnecting, connectRequested, connected, wallet]);
 
   const attemptReconnect = useCallback(async () => {
     if (connected || adapterConnecting || reconnectingRef.current) return;
@@ -85,7 +140,7 @@ function AppWalletBridge({ children }) {
     if (!pending && !selectedWallet) return;
 
     reconnectingRef.current = true;
-    mobileDebugLog("Reconnect attempted", { selectedWallet });
+    walletDebugLog("Trying trusted reconnect", { selectedWallet });
 
     try {
       const selectedAdapter = availableWallets.find((item) =>
@@ -94,63 +149,30 @@ function AppWalletBridge({ children }) {
 
       if (selectedAdapter) {
         select(selectedAdapter.adapter.name);
-        await selectedAdapter.adapter.connect();
-        mobileDebugLog("Provider connected", selectedAdapter.adapter.name);
+        await adapterConnect();
+        walletDebugLog("Connected wallet", selectedAdapter.adapter.name);
       } else if (window.solana?.isPhantom) {
+        walletDebugLog("Desktop provider found");
         await window.solana.connect({ onlyIfTrusted: true });
-        mobileDebugLog("Provider connected", "Phantom provider");
+        walletDebugLog("Connected wallet", "Phantom provider");
       } else {
-        mobileDebugLog("Provider not found");
+        walletDebugLog(isMobileBrowser() ? "Mobile provider missing" : "Provider missing");
       }
     } catch (error) {
-      mobileDebugLog("Reconnect failed", error.message);
+      walletDebugLog("Wallet connect failed", error.message);
     } finally {
       reconnectingRef.current = false;
       sessionStorage.removeItem("coinflow_wallet_connect_pending");
     }
-  }, [adapterConnecting, availableWallets, connected, select]);
-
-  const handleMobileWalletSelect = useCallback(
-    async (walletName) => {
-      const adapterWallet = availableWallets.find((item) =>
-        item.adapter.name.toLowerCase().includes(walletName.toLowerCase())
-      );
-
-      mobileDebugLog("Mobile wallet selected", walletName);
-      localStorage.setItem("coinflow_selected_wallet", walletName);
-      sessionStorage.setItem("coinflow_wallet_connect_pending", "1");
-
-      try {
-        if (adapterWallet) {
-          select(adapterWallet.adapter.name);
-        }
-
-        // Some mobile wallets open an in-app browser instead of returning to the original browser.
-        // CoinFlow retries adapter/provider reconnect when the user returns manually.
-        const deepLink = getWalletDeepLink(walletName);
-        mobileDebugLog("Deep link opened", deepLink);
-        setMobileMessage(
-          "After approving in your wallet, return to this browser tab and CoinFlow will reconnect automatically."
-        );
-        window.location.href = deepLink;
-      } catch (error) {
-        setMobileMessage(error.message || "Wallet connection failed. Please try again.");
-      }
-    },
-    [availableWallets, select]
-  );
-
-  const handleInstallWallet = useCallback((walletName) => {
-    const installUrl = getWalletInstallUrl(walletName);
-    mobileDebugLog("Provider not found", walletName);
-    window.location.href = installUrl;
-  }, []);
+  }, [adapterConnect, adapterConnecting, availableWallets, connected, select]);
 
   const disconnect = useCallback(() => {
     adapterDisconnect();
     localStorage.removeItem("coinflow_wallet");
     localStorage.removeItem("coinflow_selected_wallet");
     sessionStorage.removeItem("coinflow_wallet_connect_pending");
+    setWalletError("");
+    setWalletAction(null);
   }, [adapterDisconnect]);
 
   // Persist address for auto‑reconnect hint
@@ -172,12 +194,12 @@ function AppWalletBridge({ children }) {
 
   useEffect(() => {
     const handleFocus = () => {
-      mobileDebugLog("Returning from wallet");
+      walletDebugLog("Returning from wallet");
       attemptReconnect();
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        mobileDebugLog("Returning from wallet");
+        walletDebugLog("Returning from wallet");
         attemptReconnect();
       }
     };
@@ -195,14 +217,14 @@ function AppWalletBridge({ children }) {
     if (!provider?.on) return undefined;
 
     const handleProviderConnect = () => {
-      mobileDebugLog("Provider connected");
+      walletDebugLog("Connected wallet");
       attemptReconnect();
     };
     const handleProviderDisconnect = () => {
-      mobileDebugLog("Provider disconnected");
+      walletDebugLog("Provider disconnected");
     };
     const handleAccountChanged = () => {
-      mobileDebugLog("Provider accountChanged");
+      walletDebugLog("Provider accountChanged");
       attemptReconnect();
     };
 
@@ -224,22 +246,38 @@ function AppWalletBridge({ children }) {
       connect,
       disconnect,
       sendTransaction: sendTx,
+      walletError,
+      walletAction,
     }),
-    [walletAddress, adapterConnecting, connect, disconnect, sendTx]
+    [walletAddress, adapterConnecting, connect, disconnect, sendTx, walletError, walletAction]
   );
 
   return (
     <WalletContext.Provider value={value}>
       {children}
-      <MobileWalletModal
-        open={mobileModalOpen}
-        message={mobileMessage}
-        onClose={() => setMobileModalOpen(false)}
-        onSelectWallet={handleMobileWalletSelect}
-        onInstallWallet={handleInstallWallet}
-      />
     </WalletContext.Provider>
   );
+}
+
+function isMobileBrowser() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+}
+
+function getPhantomBrowserUrl() {
+  return `phantom://browse/${encodeURIComponent(window.location.href)}`;
+}
+
+function walletDebugLog(...args) {
+  if (import.meta.env.DEV) {
+    console.info("[CoinFlow wallet]", ...args);
+  }
+}
+
+function normalizeWalletError(error) {
+  const message = error?.message || "Wallet connection failed. Please try again.";
+  if (/reject/i.test(message)) return "Wallet connection was rejected.";
+  if (/not installed|not found|unavailable/i.test(message)) return "Wallet provider unavailable. Install the wallet or try its in-app browser.";
+  return message;
 }
 
 // ---------- Wallet list ----------

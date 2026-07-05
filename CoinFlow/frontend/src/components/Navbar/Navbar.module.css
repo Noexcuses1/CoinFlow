@@ -79,6 +79,26 @@
   .connectBtn:hover {
     opacity: 0.9;
   }
+  .connectWrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .walletError {
+    max-width: 240px;
+    color: var(--danger);
+    font-size: 0.72rem;
+    line-height: 1.2;
+    text-align: right;
+  }
+  .walletAction {
+    color: var(--accent-green);
+    font-size: 0.72rem;
+    text-align: right;
+    text-decoration: underline;
+  }
   .walletInfo {
     display: flex;
     align-items: center;
@@ -136,6 +156,15 @@
     .connectBtn {
       padding: 6px 12px;
       font-size: 0.75rem;
+    }
+
+    .walletError {
+      max-width: 180px;
+      font-size: 0.68rem;
+    }
+
+    .walletAction {
+      font-size: 0.68rem;
     }
   
     .walletInfo {

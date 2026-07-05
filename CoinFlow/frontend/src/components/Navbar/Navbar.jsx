@@ -3,7 +3,7 @@ import styles from './Navbar.module.css';
 import { useWallet } from '../../context/WalletContext';
 
 export default function Navbar() {
-  const { walletAddress, connecting, connect, disconnect } = useWallet();
+  const { walletAddress, connecting, connect, disconnect, walletError, walletAction } = useWallet();
 
   return (
     <nav className={styles.navbar}>
@@ -29,9 +29,21 @@ export default function Navbar() {
             </button>
           </div>
         ) : (
-          <button onClick={connect} disabled={connecting} className={styles.connectBtn}>
-            {connecting ? 'Connecting...' : 'Connect Wallet'}
-          </button>
+          <div className={styles.connectWrap}>
+            <button onClick={connect} disabled={connecting} className={styles.connectBtn}>
+              {connecting ? 'Connecting...' : 'Connect Wallet'}
+            </button>
+            {walletError && <span className={styles.walletError}>{walletError}</span>}
+            {walletAction && (
+              <a
+                className={styles.walletAction}
+                href={walletAction.href}
+                onClick={walletAction.onClick}
+              >
+                {walletAction.label}
+              </a>
+            )}
+          </div>
         )}
       </div>
     </nav>
