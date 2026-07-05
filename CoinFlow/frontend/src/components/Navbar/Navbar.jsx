@@ -3,7 +3,17 @@ import styles from './Navbar.module.css';
 import { useWallet } from '../../context/WalletContext';
 
 export default function Navbar() {
-  const { walletAddress, connecting, connect, disconnect, walletError, walletAction } = useWallet();
+  const {
+    walletAddress,
+    connecting,
+    connect,
+    disconnect,
+    walletMessage,
+    mobileHelperOpen,
+    openPhantomBrowser,
+    copyCoinFlowUrl,
+    retryConnect,
+  } = useWallet();
 
   return (
     <nav className={styles.navbar}>
@@ -33,15 +43,18 @@ export default function Navbar() {
             <button onClick={connect} disabled={connecting} className={styles.connectBtn}>
               {connecting ? 'Connecting...' : 'Connect Wallet'}
             </button>
-            {walletError && <span className={styles.walletError}>{walletError}</span>}
-            {walletAction && (
-              <a
-                className={styles.walletAction}
-                href={walletAction.href}
-                onClick={walletAction.onClick}
-              >
-                {walletAction.label}
-              </a>
+            {mobileHelperOpen && (
+              <div className={styles.walletHelper}>
+                <p>{walletMessage || 'Mobile wallet detected. To connect, open CoinFlow inside Phantom Browser.'}</p>
+                <div className={styles.walletHelperActions}>
+                  <button type="button" onClick={openPhantomBrowser}>Open in Phantom App</button>
+                  <button type="button" onClick={copyCoinFlowUrl}>Copy CoinFlow URL</button>
+                  <button type="button" onClick={retryConnect}>Retry Connect</button>
+                </div>
+              </div>
+            )}
+            {!mobileHelperOpen && walletMessage && (
+              <span className={styles.walletMessage}>{walletMessage}</span>
             )}
           </div>
         )}

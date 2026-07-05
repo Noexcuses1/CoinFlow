@@ -86,18 +86,49 @@
     align-items: flex-end;
     gap: 4px;
   }
-  .walletError {
+  .walletMessage {
     max-width: 240px;
-    color: var(--danger);
+    color: var(--text-muted);
     font-size: 0.72rem;
     line-height: 1.2;
     text-align: right;
   }
-  .walletAction {
-    color: var(--accent-green);
-    font-size: 0.72rem;
-    text-align: right;
-    text-decoration: underline;
+  .walletHelper {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: min(320px, calc(100vw - 24px));
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+    padding: 12px;
+    z-index: 30;
+  }
+  .walletHelper p {
+    margin: 0 0 10px;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    line-height: 1.4;
+  }
+  .walletHelperActions {
+    display: grid;
+    gap: 8px;
+  }
+  .walletHelperActions button {
+    min-height: 34px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .walletHelperActions button:first-child {
+    background: var(--accent-green);
+    color: #000;
+    border-color: transparent;
   }
   .walletInfo {
     display: flex;
@@ -158,13 +189,14 @@
       font-size: 0.75rem;
     }
 
-    .walletError {
+    .walletMessage {
       max-width: 180px;
       font-size: 0.68rem;
     }
 
-    .walletAction {
-      font-size: 0.68rem;
+    .walletHelper {
+      right: -4px;
+      width: min(300px, calc(100vw - 16px));
     }
   
     .walletInfo {

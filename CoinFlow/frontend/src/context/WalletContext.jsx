@@ -43,8 +43,8 @@ function AppWalletBridge({ children }) {
   } = useSolanaWallet();
 
   const { setVisible } = useWalletModal();    // <-- this opens the modal
-  const [walletError, setWalletError] = useState("");
-  const [walletAction, setWalletAction] = useState(null);
+  const [walletMessage, setWalletMessage] = useState("");
+  const [mobileHelperOpen, setMobileHelperOpen] = useState(false);
   const [connectRequested, setConnectRequested] = useState(false);
   const reconnectingRef = useRef(false);
 
@@ -60,12 +60,49 @@ function AppWalletBridge({ children }) {
   );
   const connect = useCallback(() => {
     if (connected) return;
-    setWalletError("");
-    setWalletAction(null);
+    setWalletMessage("");
+    setMobileHelperOpen(false);
     setConnectRequested(true);
     sessionStorage.setItem("coinflow_wallet_connect_pending", "1");
     setVisible(true);
   }, [connected, setVisible]);
+
+  const retryConnect = useCallback(async () => {
+    const phantomProvider = window.solana?.isPhantom ? window.solana : null;
+    if (!phantomProvider) {
+      walletDebugLog("Mobile provider missing");
+      setWalletMessage("Mobile wallet detected. To connect, open CoinFlow inside Phantom Browser.");
+      setMobileHelperOpen(true);
+      return;
+    }
+
+    try {
+      walletDebugLog("Provider found");
+      await phantomProvider.connect();
+      walletDebugLog("Connected wallet");
+      setWalletMessage("");
+      setMobileHelperOpen(false);
+      setConnectRequested(true);
+    } catch (error) {
+      const message = normalizeWalletError(error);
+      walletDebugLog("Wallet connect failed", message);
+      setWalletMessage(message);
+    }
+  }, []);
+
+  const openPhantomBrowser = useCallback(() => {
+    walletDebugLog("Opening Phantom browser/deeplink");
+    window.location.href = getPhantomBrowserUrl();
+  }, []);
+
+  const copyCoinFlowUrl = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setWalletMessage("Now open Phantom → Browser → paste the CoinFlow URL.");
+    } catch {
+      setWalletMessage(`Copy this URL, then open Phantom → Browser and paste it: ${window.location.href}`);
+    }
+  }, []);
 
   useEffect(() => {
     if (!connectRequested || !wallet || connected || adapterConnecting) return;
@@ -82,23 +119,16 @@ function AppWalletBridge({ children }) {
 
         if (isPhantom && isMobileBrowser() && !phantomProvider) {
           walletDebugLog("Mobile provider missing");
-          setWalletError("Open CoinFlow inside Phantom browser to connect on mobile. If it does not connect, open Phantom → Browser → paste CoinFlow URL.");
-          setWalletAction({
-            label: "Open CoinFlow in Phantom Browser",
-            href: getPhantomBrowserUrl(),
-            onClick: () => walletDebugLog("Opening Phantom browser/deeplink"),
-          });
+          setWalletMessage("Mobile wallet detected. To connect, open CoinFlow inside Phantom Browser.");
+          setMobileHelperOpen(true);
           setConnectRequested(false);
           return;
         }
 
         if (isPhantom && !isMobileBrowser() && !phantomProvider) {
           walletDebugLog("Provider missing");
-          setWalletError("Phantom extension not found. Install Phantom or open CoinFlow in a browser with Phantom enabled.");
-          setWalletAction({
-            label: "Install Phantom",
-            href: "https://phantom.app/download",
-          });
+          setWalletMessage("Phantom extension not found. Install Phantom or open CoinFlow in a browser with Phantom enabled.");
+          setMobileHelperOpen(false);
           setConnectRequested(false);
           return;
         }
@@ -112,15 +142,15 @@ function AppWalletBridge({ children }) {
         await adapterConnect();
         if (!cancelled) {
           walletDebugLog("Connected wallet");
-          setWalletError("");
-          setWalletAction(null);
+          setWalletMessage("");
+          setMobileHelperOpen(false);
           setConnectRequested(false);
         }
       } catch (error) {
         if (!cancelled) {
           const message = normalizeWalletError(error);
           walletDebugLog("Wallet connect failed", message);
-          setWalletError(message);
+          setWalletMessage(message);
           setConnectRequested(false);
         }
       }
@@ -171,8 +201,8 @@ function AppWalletBridge({ children }) {
     localStorage.removeItem("coinflow_wallet");
     localStorage.removeItem("coinflow_selected_wallet");
     sessionStorage.removeItem("coinflow_wallet_connect_pending");
-    setWalletError("");
-    setWalletAction(null);
+    setWalletMessage("");
+    setMobileHelperOpen(false);
   }, [adapterDisconnect]);
 
   // Persist address for auto‑reconnect hint
@@ -246,10 +276,24 @@ function AppWalletBridge({ children }) {
       connect,
       disconnect,
       sendTransaction: sendTx,
-      walletError,
-      walletAction,
+      walletMessage,
+      mobileHelperOpen,
+      openPhantomBrowser,
+      copyCoinFlowUrl,
+      retryConnect,
     }),
-    [walletAddress, adapterConnecting, connect, disconnect, sendTx, walletError, walletAction]
+    [
+      walletAddress,
+      adapterConnecting,
+      connect,
+      disconnect,
+      sendTx,
+      walletMessage,
+      mobileHelperOpen,
+      openPhantomBrowser,
+      copyCoinFlowUrl,
+      retryConnect,
+    ]
   );
 
   return (
