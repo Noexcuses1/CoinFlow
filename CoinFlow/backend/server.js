@@ -6,6 +6,8 @@ import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import cors from "cors";
 import { initializeDatabase } from "./db/postgres.js";
+import { initializeCampaignSchema } from "./db/campaignSchema.js";
+import { startCampaignBot, stopCampaignBot } from "./bot/index.js";
 import {
   initQuickNode,
 } from "./services/quicknode.js";
@@ -29,6 +31,12 @@ wss.on("connection", handleConnection);
 
 async function start() {
   await initializeDatabase();
+  await initializeCampaignSchema();
+  try {
+    await startCampaignBot();
+  } catch (error) {
+    console.error('Campaign bot failed to start:', error.message);
+  }
   initQuickNode();   // keep RPC for wallet balances
 
   // Use whale simulator for real‑time alerts (QuickNode WSS is disabled)
@@ -42,3 +50,6 @@ async function start() {
 }
 
 start();
+
+process.once('SIGINT', () => stopCampaignBot('SIGINT'));
+process.once('SIGTERM', () => stopCampaignBot('SIGTERM'));

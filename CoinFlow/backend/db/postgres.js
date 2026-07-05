@@ -28,6 +28,10 @@ export async function query(text, params) {
   }
 }
 
+export function isDatabaseConfigured() {
+  return Boolean(pool);
+}
+
 export async function initializeDatabase() {
   if (!pool) {
     console.log('🟡 No DATABASE_URL set – skipping database initialisation.');

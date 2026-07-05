@@ -23,6 +23,8 @@ export function startWhaleSimulator(intervalMs = 12000) {
 
       const alert = {
         token: token.symbol,
+        symbol: token.symbol,
+        name: token.name,
         address: token.address,          // ★ mint address
         type: side,
         wallet: '0x' + Math.random().toString(16).slice(2, 10) + '...',
