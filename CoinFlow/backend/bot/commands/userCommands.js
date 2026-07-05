@@ -5,12 +5,15 @@ import {
 } from '../../repositories/campaignUsersRepository.js';
 import { isDatabaseConfigured } from '../../db/postgres.js';
 import { listActiveTasks } from '../../repositories/campaignTasksRepository.js';
-import { mainMenuKeyboard, tasksKeyboard } from '../keyboards.js';
+import { mainMenuInlineKeyboard, tasksKeyboard } from '../keyboards.js';
 import { officialLinksMessage, pointsMessage, profileMessage } from '../messages.js';
 
 export function registerUserCommands(bot) {
   bot.start(async (ctx) => {
-    await ctx.reply('Welcome to CoinFlow 🌊', mainMenuKeyboard());
+    await ctx.reply(
+      'Welcome to CoinFlow 🌊\nComplete tasks, invite friends, and earn CFW points.',
+      mainMenuInlineKeyboard()
+    );
 
     if (!isDatabaseConfigured()) {
       console.log('Campaign database disabled: DATABASE_URL missing');
@@ -27,6 +30,39 @@ export function registerUserCommands(bot) {
     if (!user) {
       return ctx.reply('Campaign database is not available right now. Please try again later.');
     }
+  });
+
+  bot.action('menu:tasks', async (ctx) => {
+    await ctx.answerCbQuery();
+    return showTasks(ctx);
+  });
+  bot.action('menu:invite', async (ctx) => {
+    await ctx.answerCbQuery();
+    return showInviteLink(ctx);
+  });
+  bot.action('menu:points', async (ctx) => {
+    await ctx.answerCbQuery();
+    return showPoints(ctx);
+  });
+  bot.action('menu:wallet', async (ctx) => {
+    await ctx.answerCbQuery();
+    return askWallet(ctx);
+  });
+  bot.action('menu:x_username', async (ctx) => {
+    await ctx.answerCbQuery();
+    return askXUsername(ctx);
+  });
+  bot.action('menu:leaderboard', async (ctx) => {
+    await ctx.answerCbQuery();
+    return showLeaderboard(ctx);
+  });
+  bot.action('menu:links', async (ctx) => {
+    await ctx.answerCbQuery();
+    return ctx.reply(officialLinksMessage());
+  });
+  bot.action('menu:status', async (ctx) => {
+    await ctx.answerCbQuery();
+    return showStatus(ctx);
   });
 
   bot.hears('📌 Tasks', showTasks);
@@ -53,13 +89,21 @@ export function registerUserCommands(bot) {
   bot.command('status', showStatus);
 }
 
+function requireCampaignDatabase(ctx) {
+  if (isDatabaseConfigured()) return true;
+  ctx.reply('Campaign database is not configured yet.');
+  return false;
+}
+
 async function showTasks(ctx) {
+  if (!requireCampaignDatabase(ctx)) return;
   const tasks = await listActiveTasks();
   if (!tasks.length) return ctx.reply('No active tasks are available yet.');
   return ctx.reply('Choose a task to complete:', tasksKeyboard(tasks));
 }
 
 async function showInviteLink(ctx) {
+  if (!requireCampaignDatabase(ctx)) return;
   const user = await findUserByTelegramId(ctx.from.id);
   if (!user) return ctx.reply('Please run /start first.');
 
@@ -78,22 +122,26 @@ async function showInviteLink(ctx) {
 }
 
 async function showPoints(ctx) {
+  if (!requireCampaignDatabase(ctx)) return;
   const user = await findUserByTelegramId(ctx.from.id);
   if (!user) return ctx.reply('Please run /start first.');
   return ctx.reply(pointsMessage(user));
 }
 
 async function askWallet(ctx) {
+  if (!requireCampaignDatabase(ctx)) return;
   ctx.session.awaiting = 'wallet';
   return ctx.reply('Send your Solana wallet address. This is used only for campaign eligibility tracking.');
 }
 
 async function askXUsername(ctx) {
+  if (!requireCampaignDatabase(ctx)) return;
   ctx.session.awaiting = 'x_username';
   return ctx.reply('Send your X username without the @ symbol.');
 }
 
 async function showLeaderboard(ctx) {
+  if (!requireCampaignDatabase(ctx)) return;
   const leaders = await getLeaderboard(10);
   if (!leaders.length) return ctx.reply('No leaderboard entries yet.');
 
@@ -106,6 +154,7 @@ async function showLeaderboard(ctx) {
 }
 
 async function showStatus(ctx) {
+  if (!requireCampaignDatabase(ctx)) return;
   const user = await findUserByTelegramId(ctx.from.id);
   if (!user) return ctx.reply('Please run /start first.');
   return ctx.reply(profileMessage(user));

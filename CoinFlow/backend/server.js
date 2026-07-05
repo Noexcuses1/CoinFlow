@@ -14,6 +14,7 @@ import {
 import {
   handleConnection,
 } from "./websocket/feedHandler.js";
+import { startSelfPing, stopSelfPing } from "./services/selfPing.js";
 import apiRoutes from "./routes/api.js";
 
 const app = express();
@@ -35,8 +36,9 @@ async function start() {
   try {
     await startCampaignBot();
   } catch (error) {
-    console.error('Campaign bot failed to start:', error.message);
+    console.error('Campaign bot failed to start:', error.stack || error);
   }
+  startSelfPing();
   initQuickNode();   // keep RPC for wallet balances
 
   // Use whale simulator for real‑time alerts (QuickNode WSS is disabled)
@@ -51,5 +53,11 @@ async function start() {
 
 start();
 
-process.once('SIGINT', () => stopCampaignBot('SIGINT'));
-process.once('SIGTERM', () => stopCampaignBot('SIGTERM'));
+process.once('SIGINT', () => {
+  stopSelfPing();
+  stopCampaignBot('SIGINT');
+});
+process.once('SIGTERM', () => {
+  stopSelfPing();
+  stopCampaignBot('SIGTERM');
+});

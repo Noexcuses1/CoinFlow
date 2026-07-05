@@ -7,15 +7,16 @@ import {
 } from '../../repositories/campaignProofsRepository.js';
 import { maybeAwardReferralForUser } from '../../services/campaignAntiAbuse.js';
 import { buildApprovedUsersCsv } from '../../services/campaignCsvExport.js';
+import { isDatabaseConfigured } from '../../db/postgres.js';
 import { requireAdmin } from '../../utils/admins.js';
-import { adminApprovalKeyboard } from '../keyboards.js';
+import { adminApprovalKeyboard, adminMenuInlineKeyboard } from '../keyboards.js';
 
 export function registerAdminCommands(bot) {
   bot.command('admin', async (ctx) => {
     if (!requireAdmin(ctx)) return;
     return ctx.reply(
       [
-        'CoinFlow campaign admin commands:',
+        'CoinFlow campaign admin menu:',
         '/admin_stats',
         '/tasks',
         '/addtask',
@@ -29,34 +30,43 @@ export function registerAdminCommands(bot) {
         '/setairdrop <telegramId> <amount>',
         '/export_csv',
         '/broadcast <message>',
-      ].join('\n')
+      ].join('\n'),
+      adminMenuInlineKeyboard()
     );
+  });
+
+  bot.action('admin_menu:stats', async (ctx) => {
+    if (!requireAdmin(ctx)) return;
+    await ctx.answerCbQuery();
+    return showAdminStats(ctx);
+  });
+
+  bot.action('admin_menu:tasks', async (ctx) => {
+    if (!requireAdmin(ctx)) return;
+    await ctx.answerCbQuery();
+    return showAdminTasks(ctx);
+  });
+
+  bot.action('admin_menu:approvals', async (ctx) => {
+    if (!requireAdmin(ctx)) return;
+    await ctx.answerCbQuery();
+    return showApprovals(ctx);
+  });
+
+  bot.action('admin_menu:export_csv', async (ctx) => {
+    if (!requireAdmin(ctx)) return;
+    await ctx.answerCbQuery();
+    return exportCsv(ctx);
   });
 
   bot.command('admin_stats', async (ctx) => {
     if (!requireAdmin(ctx)) return;
-    const stats = await getCampaignStats();
-    return ctx.reply(
-      [
-        '📊 Campaign Stats',
-        `Users: ${stats.users_count || 0}`,
-        `Wallets submitted: ${stats.wallets_count || 0}`,
-        `X usernames submitted: ${stats.x_usernames_count || 0}`,
-        `Total CFW points: ${stats.total_points || 0}`,
-        `Approved users: ${stats.approved_users_count || 0}`,
-      ].join('\n')
-    );
+    return showAdminStats(ctx);
   });
 
   bot.command('tasks', async (ctx) => {
     if (!requireAdmin(ctx)) return;
-    const tasks = await listAllTasks();
-    if (!tasks.length) return ctx.reply('No tasks found.');
-    return ctx.reply(
-      tasks
-        .map((task) => `#${task.id} ${task.is_active ? 'active' : 'inactive'} - ${task.title} (${task.reward_points} CFW points)`)
-        .join('\n')
-    );
+    return showAdminTasks(ctx);
   });
 
   bot.command('chatid', async (ctx) => {
@@ -103,22 +113,7 @@ export function registerAdminCommands(bot) {
 
   bot.command('approvals', async (ctx) => {
     if (!requireAdmin(ctx)) return;
-    const approvals = await listPendingCompletions(10);
-    if (!approvals.length) return ctx.reply('No pending approvals.');
-
-    for (const item of approvals) {
-      const name = item.telegram_username ? `@${item.telegram_username}` : item.telegram_id;
-      await ctx.reply(
-        [
-          `Approval #${item.id}`,
-          `User: ${name}`,
-          `Task: ${item.title}`,
-          `Reward: ${item.reward_points} CFW points`,
-          `Proof: ${item.proof_text || item.proof_file_id || 'No text proof'}`,
-        ].join('\n'),
-        adminApprovalKeyboard(item.id)
-      );
-    }
+    return showApprovals(ctx);
   });
 
   bot.command('approve', async (ctx) => {
@@ -159,11 +154,7 @@ export function registerAdminCommands(bot) {
 
   bot.command('export_csv', async (ctx) => {
     if (!requireAdmin(ctx)) return;
-    const csv = await buildApprovedUsersCsv();
-    return ctx.replyWithDocument({
-      source: Buffer.from(csv),
-      filename: 'coinflow-approved-users.csv',
-    });
+    return exportCsv(ctx);
   });
 
   bot.command('broadcast', async (ctx) => {
@@ -210,6 +201,67 @@ export function registerAdminCommands(bot) {
         `Reward: ${task.reward_points} CFW points`,
       ].join('\n')
     );
+  });
+}
+
+function requireCampaignDatabase(ctx) {
+  if (isDatabaseConfigured()) return true;
+  ctx.reply('Campaign database is not configured yet.');
+  return false;
+}
+
+async function showAdminStats(ctx) {
+  if (!requireCampaignDatabase(ctx)) return;
+  const stats = await getCampaignStats();
+  return ctx.reply(
+    [
+      '📊 Campaign Stats',
+      `Users: ${stats.users_count || 0}`,
+      `Wallets submitted: ${stats.wallets_count || 0}`,
+      `X usernames submitted: ${stats.x_usernames_count || 0}`,
+      `Total CFW points: ${stats.total_points || 0}`,
+      `Approved users: ${stats.approved_users_count || 0}`,
+    ].join('\n')
+  );
+}
+
+async function showAdminTasks(ctx) {
+  if (!requireCampaignDatabase(ctx)) return;
+  const tasks = await listAllTasks();
+  if (!tasks.length) return ctx.reply('No tasks found.');
+  return ctx.reply(
+    tasks
+      .map((task) => `#${task.id} ${task.is_active ? 'active' : 'inactive'} - ${task.title} (${task.reward_points} CFW points)`)
+      .join('\n')
+  );
+}
+
+async function showApprovals(ctx) {
+  if (!requireCampaignDatabase(ctx)) return;
+  const approvals = await listPendingCompletions(10);
+  if (!approvals.length) return ctx.reply('No pending approvals.');
+
+  for (const item of approvals) {
+    const name = item.telegram_username ? `@${item.telegram_username}` : item.telegram_id;
+    await ctx.reply(
+      [
+        `Approval #${item.id}`,
+        `User: ${name}`,
+        `Task: ${item.title}`,
+        `Reward: ${item.reward_points} CFW points`,
+        `Proof: ${item.proof_text || item.proof_file_id || 'No text proof'}`,
+      ].join('\n'),
+      adminApprovalKeyboard(item.id)
+    );
+  }
+}
+
+async function exportCsv(ctx) {
+  if (!requireCampaignDatabase(ctx)) return;
+  const csv = await buildApprovedUsersCsv();
+  return ctx.replyWithDocument({
+    source: Buffer.from(csv),
+    filename: 'coinflow-approved-users.csv',
   });
 }
 

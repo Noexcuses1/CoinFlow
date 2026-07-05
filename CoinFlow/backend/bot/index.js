@@ -7,28 +7,38 @@ import { rateLimit } from './rateLimit.js';
 import { campaignSession } from './session.js';
 
 let bot = null;
+let isBotRunning = false;
 
 export async function startCampaignBot() {
+  if (bot && isBotRunning) {
+    console.log('CoinFlow campaign bot already running');
+    return bot;
+  }
+
+  console.log('Starting CoinFlow campaign bot...');
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
     console.log('Campaign bot disabled: TELEGRAM_BOT_TOKEN missing');
     return null;
   }
 
-  bot = new Telegraf(token);
-  bot.use(campaignSession());
-  bot.use(rateLimit());
+  const campaignBot = new Telegraf(token);
+  bot = campaignBot;
+  campaignBot.use(campaignSession());
+  campaignBot.use(rateLimit());
 
-  bot.command('chatid', (ctx) => {
+  campaignBot.command('ping', (ctx) => ctx.reply('pong'));
+
+  campaignBot.command('chatid', (ctx) => {
     return ctx.reply(`Current chat ID: ${ctx.chat.id}`);
   });
 
-  registerAdminCommands(bot);
-  registerUserCommands(bot);
-  registerTaskHandlers(bot);
-  registerProofHandlers(bot);
+  registerAdminCommands(campaignBot);
+  registerUserCommands(campaignBot);
+  registerTaskHandlers(campaignBot);
+  registerProofHandlers(campaignBot);
 
-  bot.action(/^copy_ca:(.+)$/, async (ctx) => {
+  campaignBot.action(/^copy_ca:(.+)$/, async (ctx) => {
     const address = ctx.match[1];
     await ctx.answerCbQuery();
     return ctx.reply(`Contract address:\n<code>${escapeHtml(address)}</code>`, {
@@ -36,26 +46,24 @@ export async function startCampaignBot() {
     });
   });
 
-  bot.catch((error, ctx) => {
+  campaignBot.catch((error, ctx) => {
     console.error('Campaign bot error:', error);
     return ctx.reply('Something went wrong. Please try again later.').catch(() => {});
   });
 
-  await bot.telegram.setMyCommands([
+  await campaignBot.telegram.deleteMyCommands();
+  await campaignBot.telegram.setMyCommands([
     { command: 'start', description: 'Start CoinFlow rewards campaign' },
-    { command: 'points', description: 'View your CFW points' },
-    { command: 'invite', description: 'Get your referral link' },
-    { command: 'wallet', description: 'Submit your Solana wallet' },
-    { command: 'xusername', description: 'Submit your X username' },
-    { command: 'leaderboard', description: 'View leaderboard' },
-    { command: 'status', description: 'View your campaign status' },
     { command: 'admin', description: 'Admin menu' },
   ]);
 
-  await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-  await bot.launch();
+  await campaignBot.telegram.deleteWebhook({ drop_pending_updates: true });
+  await campaignBot.launch({
+    dropPendingUpdates: true,
+  });
+  isBotRunning = true;
   console.log('✅ CoinFlow campaign bot started');
-  return bot;
+  return campaignBot;
 }
 
 function escapeHtml(value) {
@@ -69,5 +77,6 @@ export async function stopCampaignBot(signal) {
   if (bot) {
     bot.stop(signal);
     bot = null;
+    isBotRunning = false;
   }
 }
