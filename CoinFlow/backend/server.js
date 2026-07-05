@@ -30,28 +30,48 @@ const server = createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });
 wss.on("connection", handleConnection);
 
-async function start() {
-  await initializeDatabase();
-  await initializeCampaignSchema();
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`CoinFlow backend running on port ${PORT}`);
+  startBackgroundServices().catch((error) => {
+    console.error('Background startup failed:', error.stack || error);
+  });
+});
+
+async function startBackgroundServices() {
+  try {
+    await initializeDatabase();
+  } catch (error) {
+    console.error('Database initialization failed:', error.stack || error);
+  }
+
+  try {
+    await initializeCampaignSchema();
+  } catch (error) {
+    console.error('Campaign schema initialization failed:', error.stack || error);
+  }
+
   try {
     await startCampaignBot();
   } catch (error) {
     console.error('Campaign bot failed to start:', error.stack || error);
   }
   startSelfPing();
-  initQuickNode();   // keep RPC for wallet balances
 
-  // Use whale simulator for real‑time alerts (QuickNode WSS is disabled)
-  console.log('🐋 Starting whale alert simulator (real-time, DexScreener-based)');
-  const { startWhaleSimulator } = await import('./services/whaleSimulator.js');
-  startWhaleSimulator();
+  try {
+    initQuickNode();   // keep RPC for wallet balances
+  } catch (error) {
+    console.error('QuickNode initialization failed:', error.stack || error);
+  }
 
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 CoinFlow backend running on http://localhost:${PORT}`);
-  });
+  try {
+    // Use whale simulator for real‑time alerts (QuickNode WSS is disabled)
+    console.log('🐋 Starting whale alert simulator (real-time, DexScreener-based)');
+    const { startWhaleSimulator } = await import('./services/whaleSimulator.js');
+    startWhaleSimulator();
+  } catch (error) {
+    console.error('Whale simulator startup failed:', error.stack || error);
+  }
 }
-
-start();
 
 process.once('SIGINT', () => {
   stopSelfPing();

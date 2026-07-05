@@ -49,8 +49,10 @@ export async function initializeDatabase() {
         chain VARCHAR(20) DEFAULT 'solana',
         profit_percent NUMERIC(6,2),
         created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE INDEX IF NOT EXISTS idx_alerts_created ON alerts(created_at DESC);
+      )
+    `);
+    await query(`
+      CREATE INDEX IF NOT EXISTS idx_alerts_created ON alerts(created_at DESC)
     `);
     console.log('✅ Database initialised');
   } catch (err) {

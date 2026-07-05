@@ -6,8 +6,8 @@ export async function initializeCampaignSchema() {
     return;
   }
 
-  await query(`
-    CREATE TABLE IF NOT EXISTS campaign_users (
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS campaign_users (
       id SERIAL PRIMARY KEY,
       telegram_id BIGINT UNIQUE NOT NULL,
       telegram_username VARCHAR(255),
@@ -22,9 +22,8 @@ export async function initializeCampaignSchema() {
       suspicious_flags JSONB NOT NULL DEFAULT '[]'::jsonb,
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS campaign_tasks (
+    )`,
+    `CREATE TABLE IF NOT EXISTS campaign_tasks (
       id SERIAL PRIMARY KEY,
       type VARCHAR(50) NOT NULL,
       title VARCHAR(255) NOT NULL,
@@ -38,9 +37,8 @@ export async function initializeCampaignSchema() {
       created_by_admin_id BIGINT,
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS campaign_task_completions (
+    )`,
+    `CREATE TABLE IF NOT EXISTS campaign_task_completions (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES campaign_users(id) ON DELETE CASCADE,
       task_id INTEGER NOT NULL REFERENCES campaign_tasks(id) ON DELETE CASCADE,
@@ -52,9 +50,8 @@ export async function initializeCampaignSchema() {
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
       UNIQUE (user_id, task_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS campaign_referrals (
+    )`,
+    `CREATE TABLE IF NOT EXISTS campaign_referrals (
       id SERIAL PRIMARY KEY,
       referrer_user_id INTEGER NOT NULL REFERENCES campaign_users(id) ON DELETE CASCADE,
       referred_user_id INTEGER UNIQUE NOT NULL REFERENCES campaign_users(id) ON DELETE CASCADE,
@@ -63,15 +60,13 @@ export async function initializeCampaignSchema() {
       awarded_at TIMESTAMP,
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-    );
-
-    ALTER TABLE campaign_users ADD COLUMN IF NOT EXISTS referred_by_user_id INTEGER;
-    ALTER TABLE campaign_tasks ADD COLUMN IF NOT EXISTS chat_id TEXT;
-    ALTER TABLE campaign_tasks ADD COLUMN IF NOT EXISTS auto_verify_provider VARCHAR(50);
-    ALTER TABLE campaign_task_completions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
-    ALTER TABLE campaign_referrals ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
-
-    DO $$
+    )`,
+    `ALTER TABLE campaign_users ADD COLUMN IF NOT EXISTS referred_by_user_id INTEGER`,
+    `ALTER TABLE campaign_tasks ADD COLUMN IF NOT EXISTS chat_id TEXT`,
+    `ALTER TABLE campaign_tasks ADD COLUMN IF NOT EXISTS auto_verify_provider VARCHAR(50)`,
+    `ALTER TABLE campaign_task_completions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW()`,
+    `ALTER TABLE campaign_referrals ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW()`,
+    `DO $$
     BEGIN
       IF EXISTS (
         SELECT 1
@@ -87,13 +82,16 @@ export async function initializeCampaignSchema() {
             AND referrer.telegram_id = u.referred_by
         ';
       END IF;
-    END $$;
+    END $$`,
+    `CREATE INDEX IF NOT EXISTS idx_campaign_users_telegram_id ON campaign_users(telegram_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_campaign_users_referral_code ON campaign_users(referral_code)`,
+    `CREATE INDEX IF NOT EXISTS idx_campaign_task_completions_status ON campaign_task_completions(status)`,
+    `CREATE INDEX IF NOT EXISTS idx_campaign_referrals_status ON campaign_referrals(status)`,
+  ];
 
-    CREATE INDEX IF NOT EXISTS idx_campaign_users_telegram_id ON campaign_users(telegram_id);
-    CREATE INDEX IF NOT EXISTS idx_campaign_users_referral_code ON campaign_users(referral_code);
-    CREATE INDEX IF NOT EXISTS idx_campaign_task_completions_status ON campaign_task_completions(status);
-    CREATE INDEX IF NOT EXISTS idx_campaign_referrals_status ON campaign_referrals(status);
-  `);
+  for (const statement of statements) {
+    await query(statement);
+  }
 
   await seedFixedCampaignTasks();
 }
@@ -155,8 +153,22 @@ async function seedFixedCampaignTasks() {
         SELECT $1, $2, $3, $4, $5, $6, $7, $8
         WHERE NOT EXISTS (
           SELECT 1 FROM campaign_tasks WHERE type = $1
-        );
+        )
+      `,
+      [
+        task.type,
+        task.title,
+        task.description,
+        task.url,
+        task.chatId,
+        defaultReward,
+        task.requiresProof,
+        task.autoVerifyProvider,
+      ]
+    );
 
+    await query(
+      `
         UPDATE campaign_tasks
         SET
           title = $2,

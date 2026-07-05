@@ -7,8 +7,6 @@ export function getAdminIds() {
 
 export function isAdmin(ctx) {
   const fromId = ctx.from?.id;
-  const username = String(ctx.from?.username || '').toLowerCase();
-  if (username === 'noexcuses101') return true;
   if (!fromId) return false;
   return getAdminIds().includes(String(fromId));
 }
