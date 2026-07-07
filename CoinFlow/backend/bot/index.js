@@ -15,16 +15,39 @@ export async function startCampaignBot() {
     return bot;
   }
 
+  console.log('Starting CoinFlow campaign bot...');
   const token = process.env.TELEGRAM_BOT_TOKEN;
+  console.log(`TELEGRAM_BOT_TOKEN present: ${Boolean(token)}`);
+  console.log(`TELEGRAM_BOT_USERNAME: ${process.env.TELEGRAM_BOT_USERNAME || 'missing'}`);
+
   if (!token) {
     console.log('Campaign bot disabled: TELEGRAM_BOT_TOKEN missing');
     return null;
   }
 
+  const startupTimer = setTimeout(() => {
+    console.warn('Campaign bot startup is taking longer than expected');
+  }, 10000);
+
+  if (typeof startupTimer.unref === 'function') {
+    startupTimer.unref();
+  }
+
   try {
-    console.log('Starting CoinFlow campaign bot...');
     const campaignBot = new Telegraf(token);
     bot = campaignBot;
+
+    let botInfo;
+    try {
+      botInfo = await campaignBot.telegram.getMe();
+      console.log(`Telegram bot identity: @${botInfo.username}`);
+    } catch (error) {
+      console.error('Campaign bot token invalid or Telegram API unavailable');
+      console.error(error.stack || error);
+      bot = null;
+      return null;
+    }
+
     campaignBot.use(campaignSession());
     campaignBot.use(rateLimit());
 
@@ -52,13 +75,17 @@ export async function startCampaignBot() {
       return ctx.reply('Something went wrong. Please try again later.').catch(() => {});
     });
 
+    console.log('Deleting old Telegram webhook...');
+    await campaignBot.telegram.deleteWebhook({ drop_pending_updates: true });
+    console.log('Old webhook deleted');
+
     await campaignBot.telegram.deleteMyCommands();
     await campaignBot.telegram.setMyCommands([
       { command: 'start', description: 'Start CoinFlow rewards campaign' },
       { command: 'admin', description: 'Admin menu' },
     ]);
 
-    await campaignBot.telegram.deleteWebhook({ drop_pending_updates: true });
+    console.log('Launching Telegram polling...');
     await campaignBot.launch({
       dropPendingUpdates: true,
     });
@@ -70,6 +97,8 @@ export async function startCampaignBot() {
     bot = null;
     console.error('Campaign bot failed to start:', error.stack || error);
     return null;
+  } finally {
+    clearTimeout(startupTimer);
   }
 }
 

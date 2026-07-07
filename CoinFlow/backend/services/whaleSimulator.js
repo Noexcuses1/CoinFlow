@@ -1,13 +1,19 @@
 import { broadcastAlert } from '../websocket/feedHandler.js';
 import { getTrendingTokens } from './birdeye.js';
-import { sendAlert } from './telegram.js';
+import { getTerminalChatId, sendAlert } from './telegram.js';
 
 let intervalId = null;
 
 export function startWhaleSimulator(intervalMs = 12000) {
   if (intervalId) return intervalId; // already running
 
-  if (!process.env.TELEGRAM_CHAT_ID && !process.env.COINFLOW_TERMINAL_CHAT_ID) {
+  const chatId = getTerminalChatId();
+  console.log(`TELEGRAM_CHAT_ID present: ${Boolean(process.env.TELEGRAM_CHAT_ID)}`);
+  console.log(`QUICKNODE_RPC_URL present: ${Boolean(process.env.QUICKNODE_RPC_URL)}`);
+  console.log(`BIRDEYE_API_KEY present: ${Boolean(process.env.BIRDEYE_API_KEY)}`);
+  console.log('Starting whale simulator...');
+
+  if (!chatId) {
     console.log('Whale terminal disabled: TELEGRAM_CHAT_ID missing');
   }
 
@@ -41,7 +47,7 @@ export function startWhaleSimulator(intervalMs = 12000) {
       broadcastAlert(alert);
       const sent = await sendAlert(alert);
       if (sent) {
-        console.log('🐋 Terminal alert sent');
+        console.log(`🐋 Terminal alert sent to ${getTerminalChatId()}`);
       }
       
     } catch (err) {

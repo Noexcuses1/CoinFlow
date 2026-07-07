@@ -6,6 +6,7 @@ import { getSwapQuote as getDexlabQuote } from '../services/dexlabService.js';
 import cache from '../services/cache.js';
 import { isDatabaseConfigured } from '../db/postgres.js';
 import { isWhaleSimulatorEnabled } from '../services/whaleSimulator.js';
+import { sendTerminalTestMessage } from '../services/telegram.js';
 
 const router = Router();
 router.get('/health', (req, res) => {
@@ -17,6 +18,37 @@ router.get('/health', (req, res) => {
     botConfigured: Boolean(process.env.TELEGRAM_BOT_TOKEN),
     whaleSimulatorEnabled: isWhaleSimulatorEnabled(),
   });
+});
+
+router.get('/debug/status', (req, res) => {
+  res.json({
+    ok: true,
+    telegramChatIdConfigured: Boolean(process.env.TELEGRAM_CHAT_ID),
+    terminalChatIdConfigured: Boolean(process.env.COINFLOW_TERMINAL_CHAT_ID),
+    botTokenConfigured: Boolean(process.env.TELEGRAM_BOT_TOKEN),
+    quicknodeConfigured: Boolean(process.env.QUICKNODE_RPC_URL),
+    birdeyeConfigured: Boolean(process.env.BIRDEYE_API_KEY),
+    whaleSimulatorEnabled: isWhaleSimulatorEnabled(),
+  });
+});
+
+router.post('/debug/send-terminal-test', async (req, res) => {
+  const debugSecret = process.env.DEBUG_SECRET;
+  const providedSecret = req.get('x-debug-secret');
+
+  if (!debugSecret || providedSecret !== debugSecret) {
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized',
+    });
+  }
+
+  const result = await sendTerminalTestMessage();
+  if (!result.success) {
+    return res.status(500).json(result);
+  }
+
+  return res.json(result);
 });
 
 // ---------- DASHBOARD DATA ----------

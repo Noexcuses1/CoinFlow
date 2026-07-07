@@ -1,11 +1,14 @@
 import fetch from 'node-fetch';
 
-const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 let warnedMissingChatId = false;
 let warnedMissingBotToken = false;
 
+export function getTerminalChatId() {
+  return process.env.TELEGRAM_CHAT_ID || process.env.COINFLOW_TERMINAL_CHAT_ID || null;
+}
+
 export async function sendAlert(alert) {
-  const chatId = process.env.TELEGRAM_CHAT_ID || process.env.COINFLOW_TERMINAL_CHAT_ID;
+  const chatId = getTerminalChatId();
   if (!chatId) {
     if (!warnedMissingChatId) {
       console.log('Whale terminal disabled: TELEGRAM_CHAT_ID missing');
@@ -35,6 +38,37 @@ export async function sendAlert(alert) {
   } catch (e) {
     console.error('Telegram send error:', e.stack || e.message || e);
     return false;
+  }
+}
+
+export async function sendTerminalTestMessage() {
+  const chatId = getTerminalChatId();
+  if (!chatId) {
+    return {
+      success: false,
+      error: 'TELEGRAM_CHAT_ID missing',
+    };
+  }
+
+  if (!process.env.TELEGRAM_BOT_TOKEN) {
+    return {
+      success: false,
+      error: 'TELEGRAM_BOT_TOKEN missing',
+    };
+  }
+
+  try {
+    const result = await postTelegramMessage(chatId, 'CoinFlow terminal test alert ✅');
+    return {
+      success: Boolean(result.ok),
+      status: result.ok ? 'sent' : 'telegram_error',
+      error: result.ok ? undefined : result.description || 'Telegram API error',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message || 'Telegram send failed',
+    };
   }
 }
 
@@ -82,7 +116,7 @@ function buildAlertReplyMarkup(alert, useCopyText) {
 }
 
 async function postTelegramMessage(chatId, message, replyMarkup) {
-  const response = await fetch(`${TELEGRAM_API}/sendMessage`, {
+  const response = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
