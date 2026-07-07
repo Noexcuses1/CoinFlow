@@ -32,6 +32,7 @@ wss.on("connection", handleConnection);
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`CoinFlow backend running on port ${PORT}`);
+  startSelfPing();
   startBackgroundServices().catch((error) => {
     console.error('Background startup failed:', error.stack || error);
   });
@@ -55,7 +56,6 @@ async function startBackgroundServices() {
   } catch (error) {
     console.error('Campaign bot failed to start:', error.stack || error);
   }
-  startSelfPing();
 
   try {
     initQuickNode();   // keep RPC for wallet balances

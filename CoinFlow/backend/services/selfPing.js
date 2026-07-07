@@ -2,7 +2,10 @@ let selfPingTimer = null;
 
 export function startSelfPing() {
   const url = process.env.SELF_PING_URL;
-  const intervalMinutes = Number(process.env.SELF_PING_INTERVAL_MINUTES || 10);
+  const configuredInterval = Number(process.env.SELF_PING_INTERVAL_MINUTES || 10);
+  const intervalMinutes = Number.isFinite(configuredInterval) && configuredInterval > 0
+    ? configuredInterval
+    : 10;
 
   if (!url) {
     console.log('Self-ping disabled: SELF_PING_URL missing');
@@ -14,7 +17,7 @@ export function startSelfPing() {
     return selfPingTimer;
   }
 
-  const intervalMs = Math.max(1, intervalMinutes) * 60 * 1000;
+  const intervalMs = intervalMinutes * 60 * 1000;
 
   console.log(`Self-ping enabled for ${url}`);
 

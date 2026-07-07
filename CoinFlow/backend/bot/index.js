@@ -15,55 +15,62 @@ export async function startCampaignBot() {
     return bot;
   }
 
-  console.log('Starting CoinFlow campaign bot...');
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
     console.log('Campaign bot disabled: TELEGRAM_BOT_TOKEN missing');
     return null;
   }
 
-  const campaignBot = new Telegraf(token);
-  bot = campaignBot;
-  campaignBot.use(campaignSession());
-  campaignBot.use(rateLimit());
+  try {
+    console.log('Starting CoinFlow campaign bot...');
+    const campaignBot = new Telegraf(token);
+    bot = campaignBot;
+    campaignBot.use(campaignSession());
+    campaignBot.use(rateLimit());
 
-  campaignBot.command('ping', (ctx) => ctx.reply('pong'));
+    campaignBot.command('ping', (ctx) => ctx.reply('pong'));
 
-  campaignBot.command('chatid', (ctx) => {
-    return ctx.reply(`Current chat ID: ${ctx.chat.id}`);
-  });
-
-  registerAdminCommands(campaignBot);
-  registerUserCommands(campaignBot);
-  registerTaskHandlers(campaignBot);
-  registerProofHandlers(campaignBot);
-
-  campaignBot.action(/^copy_ca:(.+)$/, async (ctx) => {
-    const address = ctx.match[1];
-    await ctx.answerCbQuery();
-    return ctx.reply(`Contract address:\n<code>${escapeHtml(address)}</code>`, {
-      parse_mode: 'HTML',
+    campaignBot.command('chatid', (ctx) => {
+      return ctx.reply(`Current chat ID: ${ctx.chat.id}`);
     });
-  });
 
-  campaignBot.catch((error, ctx) => {
-    console.error('Campaign bot error:', error);
-    return ctx.reply('Something went wrong. Please try again later.').catch(() => {});
-  });
+    registerAdminCommands(campaignBot);
+    registerUserCommands(campaignBot);
+    registerTaskHandlers(campaignBot);
+    registerProofHandlers(campaignBot);
 
-  await campaignBot.telegram.deleteMyCommands();
-  await campaignBot.telegram.setMyCommands([
-    { command: 'start', description: 'Start CoinFlow rewards campaign' },
-    { command: 'admin', description: 'Admin menu' },
-  ]);
+    campaignBot.action(/^copy_ca:(.+)$/, async (ctx) => {
+      const address = ctx.match[1];
+      await ctx.answerCbQuery();
+      return ctx.reply(`Contract address:\n<code>${escapeHtml(address)}</code>`, {
+        parse_mode: 'HTML',
+      });
+    });
 
-  await campaignBot.telegram.deleteWebhook({ drop_pending_updates: true });
-  await campaignBot.launch({
-    dropPendingUpdates: true,
-  });
-  isBotRunning = true;
-  console.log('✅ CoinFlow campaign bot started');
-  return campaignBot;
+    campaignBot.catch((error, ctx) => {
+      console.error('Campaign bot error:', error);
+      return ctx.reply('Something went wrong. Please try again later.').catch(() => {});
+    });
+
+    await campaignBot.telegram.deleteMyCommands();
+    await campaignBot.telegram.setMyCommands([
+      { command: 'start', description: 'Start CoinFlow rewards campaign' },
+      { command: 'admin', description: 'Admin menu' },
+    ]);
+
+    await campaignBot.telegram.deleteWebhook({ drop_pending_updates: true });
+    await campaignBot.launch({
+      dropPendingUpdates: true,
+    });
+    isBotRunning = true;
+    console.log('✅ CoinFlow campaign bot started');
+    return campaignBot;
+  } catch (error) {
+    isBotRunning = false;
+    bot = null;
+    console.error('Campaign bot failed to start:', error.stack || error);
+    return null;
+  }
 }
 
 function escapeHtml(value) {

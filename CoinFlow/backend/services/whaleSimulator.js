@@ -5,7 +5,11 @@ import { sendAlert } from './telegram.js';
 let intervalId = null;
 
 export function startWhaleSimulator(intervalMs = 12000) {
-  if (intervalId) return; // already running
+  if (intervalId) return intervalId; // already running
+
+  if (!process.env.TELEGRAM_CHAT_ID && !process.env.COINFLOW_TERMINAL_CHAT_ID) {
+    console.log('Whale terminal disabled: TELEGRAM_CHAT_ID missing');
+  }
 
   intervalId = setInterval(async () => {
     try {
@@ -35,14 +39,22 @@ export function startWhaleSimulator(intervalMs = 12000) {
       };
 
       broadcastAlert(alert);
-      sendAlert(alert).catch((err) => console.error('Telegram send failed:', err.message));
+      const sent = await sendAlert(alert);
+      if (sent) {
+        console.log('🐋 Terminal alert sent');
+      }
       
     } catch (err) {
-      console.error('Whale simulator error:', err.message);
+      console.error('Whale simulator error:', err.stack || err.message || err);
     }
   }, intervalMs);
 
-  console.log(`🐋 Whale simulator started (every ${intervalMs / 1000}s)`);
+  if (typeof intervalId.unref === 'function') {
+    intervalId.unref();
+  }
+
+  console.log('🐋 Whale simulator started');
+  return intervalId;
 }
 
 export function stopWhaleSimulator() {
@@ -50,4 +62,8 @@ export function stopWhaleSimulator() {
     clearInterval(intervalId);
     intervalId = null;
   }
+}
+
+export function isWhaleSimulatorEnabled() {
+  return Boolean(intervalId);
 }

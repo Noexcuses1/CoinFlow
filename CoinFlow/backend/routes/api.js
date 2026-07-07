@@ -4,10 +4,19 @@ import { getWalletBalances } from '../services/quicknode.js';
 import { getSwapQuote, buildSwapTransaction, getTokens } from '../services/jupiterService.js';
 import { getSwapQuote as getDexlabQuote } from '../services/dexlabService.js';
 import cache from '../services/cache.js';
+import { isDatabaseConfigured } from '../db/postgres.js';
+import { isWhaleSimulatorEnabled } from '../services/whaleSimulator.js';
 
 const router = Router();
 router.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    ok: true,
+    service: 'coinflow-backend',
+    uptime: process.uptime(),
+    databaseConfigured: isDatabaseConfigured(),
+    botConfigured: Boolean(process.env.TELEGRAM_BOT_TOKEN),
+    whaleSimulatorEnabled: isWhaleSimulatorEnabled(),
+  });
 });
 
 // ---------- DASHBOARD DATA ----------

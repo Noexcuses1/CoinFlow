@@ -1,20 +1,40 @@
 import fetch from 'node-fetch';
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
+let warnedMissingChatId = false;
+let warnedMissingBotToken = false;
 
 export async function sendAlert(alert) {
   const chatId = process.env.TELEGRAM_CHAT_ID || process.env.COINFLOW_TERMINAL_CHAT_ID;
-  if (!chatId) return;
+  if (!chatId) {
+    if (!warnedMissingChatId) {
+      console.log('Whale terminal disabled: TELEGRAM_CHAT_ID missing');
+      warnedMissingChatId = true;
+    }
+    return false;
+  }
+
+  if (!process.env.TELEGRAM_BOT_TOKEN) {
+    if (!warnedMissingBotToken) {
+      console.log('Whale terminal disabled: TELEGRAM_BOT_TOKEN missing');
+      warnedMissingBotToken = true;
+    }
+    return false;
+  }
+
   const message = buildAlertMessage(alert);
   const replyMarkup = buildAlertReplyMarkup(alert, true);
 
   try {
     const result = await postTelegramMessage(chatId, message, replyMarkup);
     if (!result.ok && alert.address) {
-      await postTelegramMessage(chatId, message, buildAlertReplyMarkup(alert, false));
+      const fallbackResult = await postTelegramMessage(chatId, message, buildAlertReplyMarkup(alert, false));
+      return Boolean(fallbackResult.ok);
     }
+    return Boolean(result.ok);
   } catch (e) {
-    console.error('Telegram send error', e);
+    console.error('Telegram send error:', e.stack || e.message || e);
+    return false;
   }
 }
 
