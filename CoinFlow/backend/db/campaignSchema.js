@@ -87,6 +87,7 @@ export async function initializeCampaignSchema() {
     `CREATE INDEX IF NOT EXISTS idx_campaign_users_referral_code ON campaign_users(referral_code)`,
     `CREATE INDEX IF NOT EXISTS idx_campaign_task_completions_status ON campaign_task_completions(status)`,
     `CREATE INDEX IF NOT EXISTS idx_campaign_referrals_status ON campaign_referrals(status)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_campaign_tasks_type_unique ON campaign_tasks(type)`,
   ];
 
   for (const statement of statements) {
@@ -97,7 +98,8 @@ export async function initializeCampaignSchema() {
 }
 
 async function seedFixedCampaignTasks() {
-  const defaultReward = parseInt(process.env.CAMPAIGN_DEFAULT_TASK_POINTS || '30', 10);
+  const configuredReward = Number.parseInt(process.env.CAMPAIGN_DEFAULT_TASK_POINTS || '30', 10);
+  const defaultReward = Number.isFinite(configuredReward) ? configuredReward : 30;
   const tasks = [
     {
       type: 'join_terminal_group',
@@ -137,8 +139,10 @@ async function seedFixedCampaignTasks() {
     },
   ];
 
+  let failedTaskCount = 0;
+
   for (const task of tasks) {
-    await query(
+    const result = await query(
       `
         INSERT INTO campaign_tasks (
           type,
@@ -148,12 +152,31 @@ async function seedFixedCampaignTasks() {
           chat_id,
           reward_points,
           requires_proof,
-          auto_verify_provider
+          auto_verify_provider,
+          is_active
         )
-        SELECT $1, $2, $3, $4, $5, $6, $7, $8
-        WHERE NOT EXISTS (
-          SELECT 1 FROM campaign_tasks WHERE type = $1
+        VALUES (
+          $1::varchar,
+          $2::varchar,
+          $3::text,
+          $4::text,
+          $5::text,
+          $6::integer,
+          $7::boolean,
+          $8::varchar,
+          TRUE
         )
+        ON CONFLICT (type)
+        DO UPDATE SET
+          title = EXCLUDED.title,
+          description = EXCLUDED.description,
+          url = EXCLUDED.url,
+          chat_id = EXCLUDED.chat_id,
+          reward_points = EXCLUDED.reward_points,
+          requires_proof = EXCLUDED.requires_proof,
+          auto_verify_provider = EXCLUDED.auto_verify_provider,
+          is_active = TRUE,
+          updated_at = NOW()
       `,
       [
         task.type,
@@ -167,30 +190,13 @@ async function seedFixedCampaignTasks() {
       ]
     );
 
-    await query(
-      `
-        UPDATE campaign_tasks
-        SET
-          title = $2,
-          description = $3,
-          url = $4,
-          chat_id = $5,
-          reward_points = COALESCE(reward_points, $6),
-          requires_proof = $7,
-          auto_verify_provider = $8,
-          updated_at = NOW()
-        WHERE type = $1
-      `,
-      [
-        task.type,
-        task.title,
-        task.description,
-        task.url,
-        task.chatId,
-        defaultReward,
-        task.requiresProof,
-        task.autoVerifyProvider,
-      ]
-    );
+    if (result.rowCount === 0) {
+      failedTaskCount += 1;
+      console.error(`Campaign fixed task failed to seed: ${task.type}`);
+    }
+  }
+
+  if (failedTaskCount === 0) {
+    console.log('✅ Campaign fixed tasks seeded');
   }
 }
