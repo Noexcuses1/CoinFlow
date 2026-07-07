@@ -3,6 +3,7 @@ import cache from './cache.js';
 
 let lastRequestTime = 0;
 const MIN_DELAY_MS = 500;
+let dexScreenerBackoffUntil = 0;
 
 async function rateLimit() {
   const now = Date.now();
@@ -31,6 +32,11 @@ export async function getTrendingTokens(limit = 20) {
   if (cached) return { success: true, data: cached };
 
   try {
+    const now = Date.now();
+    if (now < dexScreenerBackoffUntil) {
+      return { success: false, data: [] };
+    }
+
     await rateLimit();
 
     // 1. Get latest Solana token profiles
@@ -69,7 +75,10 @@ export async function getTrendingTokens(limit = 20) {
             volume24h: parseFloat(pair.volume?.h24 || 0),
             liquidity: parseFloat(pair.liquidity?.usd || 0),
           };
-        } catch {
+        } catch (err) {
+          if (err.response?.status === 429) {
+            setDexScreenerBackoff();
+          }
           return null;
         }
       })
@@ -80,11 +89,27 @@ export async function getTrendingTokens(limit = 20) {
     // Sort by volume descending
     filtered.sort((a, b) => b.volume24h - a.volume24h);
 
-    cache.set(cacheKey, filtered, 30);
+    cache.set(cacheKey, filtered, 60);
     return { success: true, data: filtered.slice(0, limit) };
   } catch (err) {
+    if (err.response?.status === 429) {
+      setDexScreenerBackoff();
+    }
     console.error('DexScreener trending error:', err.message);
     return { success: false, data: [] };
+  }
+}
+
+function setDexScreenerBackoff() {
+  const configuredSeconds = Number.parseInt(process.env.DEXSCREENER_BACKOFF_SECONDS || '180', 10);
+  const backoffSeconds = Number.isFinite(configuredSeconds) && configuredSeconds > 0
+    ? configuredSeconds
+    : 180;
+  const nextBackoffUntil = Date.now() + backoffSeconds * 1000;
+
+  if (nextBackoffUntil > dexScreenerBackoffUntil) {
+    dexScreenerBackoffUntil = nextBackoffUntil;
+    console.warn(`DexScreener rate limited, backing off for ${backoffSeconds}s`);
   }
 }
 

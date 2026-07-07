@@ -3,10 +3,12 @@ import { getTrendingTokens } from './birdeye.js';
 import { getTerminalChatId, sendAlert } from './telegram.js';
 
 let intervalId = null;
+const recentTokenAlerts = new Map();
 
-export function startWhaleSimulator(intervalMs = 12000) {
+export function startWhaleSimulator(intervalMs = getWhaleSimulatorIntervalMs()) {
   if (intervalId) return intervalId; // already running
 
+  const intervalSeconds = Math.round(intervalMs / 1000);
   const chatId = getTerminalChatId();
   console.log(`TELEGRAM_CHAT_ID present: ${Boolean(process.env.TELEGRAM_CHAT_ID)}`);
   console.log(`QUICKNODE_RPC_URL present: ${Boolean(process.env.QUICKNODE_RPC_URL)}`);
@@ -24,7 +26,8 @@ export function startWhaleSimulator(intervalMs = 12000) {
       if (!result.success || !result.data.length) return;
 
       // Pick a random token
-      const token = result.data[Math.floor(Math.random() * result.data.length)];
+      const token = pickAlertableToken(result.data);
+      if (!token) return;
 
       // Generate a random whale move
       const side = Math.random() > 0.5 ? 'buy' : 'sell';
@@ -59,7 +62,7 @@ export function startWhaleSimulator(intervalMs = 12000) {
     intervalId.unref();
   }
 
-  console.log('🐋 Whale simulator started');
+  console.log(`🐋 Whale simulator started every ${intervalSeconds}s`);
   return intervalId;
 }
 
@@ -72,4 +75,48 @@ export function stopWhaleSimulator() {
 
 export function isWhaleSimulatorEnabled() {
   return Boolean(intervalId);
+}
+
+function getWhaleSimulatorIntervalMs() {
+  const configuredSeconds = Number.parseInt(process.env.WHALE_SIMULATOR_INTERVAL_SECONDS || '60', 10);
+  const intervalSeconds = Number.isFinite(configuredSeconds) && configuredSeconds > 0
+    ? configuredSeconds
+    : 60;
+  return intervalSeconds * 1000;
+}
+
+function getDedupeWindowMs() {
+  const configuredMinutes = Number.parseInt(process.env.WHALE_ALERT_DEDUPE_MINUTES || '10', 10);
+  const dedupeMinutes = Number.isFinite(configuredMinutes) && configuredMinutes > 0
+    ? configuredMinutes
+    : 10;
+  return dedupeMinutes * 60 * 1000;
+}
+
+function pickAlertableToken(tokens) {
+  const dedupeWindowMs = getDedupeWindowMs();
+  const now = Date.now();
+
+  for (const [address, sentAt] of recentTokenAlerts.entries()) {
+    if (now - sentAt > dedupeWindowMs) {
+      recentTokenAlerts.delete(address);
+    }
+  }
+
+  const candidates = tokens.filter((token) => {
+    const key = getTokenDedupeKey(token);
+    return key && !recentTokenAlerts.has(key);
+  });
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const token = candidates[Math.floor(Math.random() * candidates.length)];
+  recentTokenAlerts.set(getTokenDedupeKey(token), now);
+  return token;
+}
+
+function getTokenDedupeKey(token) {
+  return token?.address || token?.symbol || null;
 }
